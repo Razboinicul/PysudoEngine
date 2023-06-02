@@ -66,8 +66,13 @@ class Rect:
     def move(self, dx=0, dy=0):
         self.rect.move(dx, -dy)
     
+    def get_center(self):
+        p = self.rect.getCenter()
+        return p.x, p.y
+    
     def is_touched(self, x, y):
         return ((x >= self.x1) and (y >= self.y1)) and ((x <= self.x2) and (y <= self.y2))
+    
 
 class Oval:
     def __init__(self, x1, y1, x2, y2, fill=None) -> None:
@@ -233,6 +238,44 @@ class Image:
             
     def move(self, dx=0, dy=0):
         self.img.move(dx, -dy)
+
+class Button:
+    def __init__(self, x1, y1, x2, y2, fill=None, text="") -> None:
+        global window
+        self.x1 = x1
+        self.y1 = y1
+        self.x2 = x2
+        self.y2 = y2
+        self.fill = fill
+        self.text = text
+        self.window = window
+        self.rect = g.Rectangle(g.Point(self.x1, self.y1), g.Point(self.x2, self.y2))
+        self.rect.setFill(fill)
+        self.rect.draw(self.window)
+        self.drawn = True
+        c_x, c_y = self.get_center()
+        self.text_obj = Text(c_x, c_y, self.text)
+        objects.append(self.rect)
+    
+    def hide(self):
+        if self.drawn:
+            self.rect.undraw()
+            self.drawn = False
+    
+    def show(self):
+        if not self.drawn:
+            self.rect.draw(self.window)
+            self.drawn = True
+    
+    def move(self, dx=0, dy=0):
+        self.rect.move(dx, -dy)
+    
+    def get_center(self):
+        p = self.rect.getCenter()
+        return p.x, p.y
+    
+    def is_touched(self, x, y):
+        return ((x >= self.x1) and (y >= self.y1)) and ((x <= self.x2) and (y <= self.y2))
         
 #Polygon not working
 """class Polygon:
