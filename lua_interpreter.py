@@ -12,17 +12,21 @@ def ready():
         text += line+"\n"
     lua.execute(text)
 
+def run_process():
+    global filepath, lua, g
+    f = open(filepath, "r+")
+    read = f.readlines()
+    f.close()
+    text = """"""
+    for line in read:
+        text += line+"\n"
+    while True:
+        if g.window.is_closed():
+            break
+        lua.execute(text)
+
 g = lua.globals()
 g.engine = GraphicsEngine
 g.window = GraphicsEngine.Window("GraphicsEngine", 800, 600)
 ready()
-f = open(filepath, "r+")
-read = f.readlines()
-f.close()
-text = """"""
-for line in read:
-    text += line+"\n"
-while True:
-    if g.window.is_closed():
-        break
-    lua.execute(text)
+run_process()

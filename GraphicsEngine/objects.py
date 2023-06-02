@@ -22,8 +22,8 @@ class Window:
         return self.window.closed
     
     def wait_for_click(self):
-        self.window.getMouse()
-        return True
+        p = self.window.getMouse()
+        return p.x, p.y
     
     def key_pressed(self):
         press = self.window.checkKey()
@@ -62,6 +62,12 @@ class Rect:
         if not self.drawn:
             self.rect.draw(self.window)
             self.drawn = True
+    
+    def move(self, dx=0, dy=0):
+        self.rect.move(dx, -dy)
+    
+    def is_touched(self, x, y):
+        return ((x >= self.x1) and (y >= self.y1)) and ((x <= self.x2) and (y <= self.y2))
 
 class Oval:
     def __init__(self, x1, y1, x2, y2, fill=None) -> None:
@@ -89,7 +95,7 @@ class Oval:
             self.drawn = True
             
     def move(self, dx=0, dy=0):
-        self.oval.move(dx, dy)
+        self.oval.move(dx, -dy)
         
 class Circle:
     def __init__(self, x, y, radius, fill=None) -> None:
@@ -116,7 +122,7 @@ class Circle:
             self.drawn = True
             
     def move(self, dx=0, dy=0):
-        self.circle.move(dx, dy)
+        self.circle.move(dx, -dy)
 
 class Line:
     def __init__(self, x1, y1, x2, y2, fill=None) -> None:
@@ -144,7 +150,7 @@ class Line:
             self.drawn = True
             
     def move(self, dx=0, dy=0):
-        self.line.move(dx, dy)
+        self.line.move(dx, -dy)
 
 class Text:
     def __init__(self, x, y, text="", fill=None) -> None:
@@ -171,7 +177,7 @@ class Text:
             self.drawn = True
             
     def move(self, dx=0, dy=0):
-        self.text.move(dx, dy)
+        self.text.move(dx, -dy)
 
 class Entry:
     def __init__(self, x, y, width, fill=None) -> None:
@@ -201,7 +207,7 @@ class Entry:
             self.drawn = True
             
     def move(self, dx=0, dy=0):
-        self.entry.move(dx, dy)
+        self.entry.move(dx, -dy)
 
 class Image:
     def __init__(self, x, y, filename) -> None:
@@ -226,7 +232,7 @@ class Image:
             self.drawn = True
             
     def move(self, dx=0, dy=0):
-        self.img.move(dx, dy)
+        self.img.move(dx, -dy)
         
 #Polygon not working
 """class Polygon:
