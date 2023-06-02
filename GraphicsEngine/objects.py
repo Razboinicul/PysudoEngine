@@ -21,9 +21,12 @@ class Window:
     def is_closed(self):
         return self.window.closed
     
-    def wait_for_click(self):
-        p = self.window.getMouse()
-        return p.x, p.y
+    def get_click(self):
+        p = self.window.checkMouse()
+        if p != None:
+            return p.x, p.y
+        else:
+            return None, None
     
     def key_pressed(self):
         press = self.window.checkKey()
@@ -51,7 +54,7 @@ class Rect:
         self.rect.setFill(fill)
         self.rect.draw(self.window)
         self.drawn = True
-        objects.append(self.rect)
+        objects.append(self)
     
     def hide(self):
         if self.drawn:
@@ -71,8 +74,10 @@ class Rect:
         return p.x, p.y
     
     def is_touched(self, x, y):
-        return ((x >= self.x1) and (y >= self.y1)) and ((x <= self.x2) and (y <= self.y2))
-    
+        if (x == None) or (y == None):
+            return False
+        else:
+            return ((x >= self.x1) and (y >= self.y1)) and ((x <= self.x2) and (y <= self.y2))
 
 class Oval:
     def __init__(self, x1, y1, x2, y2, fill=None) -> None:
@@ -87,7 +92,7 @@ class Oval:
         self.oval.setFill(fill)
         self.oval.draw(self.window)
         self.drawn = True
-        objects.append(self.oval)
+        objects.append(self)
         
     def hide(self):
         if self.drawn:
@@ -114,7 +119,7 @@ class Circle:
         self.circle.setFill(fill)
         self.circle.draw(self.window)
         self.drawn = True
-        objects.append(self.circle)
+        objects.append(self)
         
     def hide(self):
         if self.drawn:
@@ -142,7 +147,7 @@ class Line:
         self.line.setFill(fill)
         self.line.draw(self.window)
         self.drawn = True
-        objects.append(self.line)
+        objects.append(self)
         
     def hide(self):
         if self.drawn:
@@ -169,7 +174,7 @@ class Text:
         self.text.setFill(fill)
         self.text.draw(self.window)
         self.drawn = True
-        objects.append(self.text)
+        objects.append(self)
         
     def hide(self):
         if self.drawn:
@@ -196,7 +201,7 @@ class Entry:
         self.entry.setFill(fill)
         self.entry.draw(self.window)
         self.drawn = True
-        objects.append(self.entry)
+        objects.append(self)
     
     def get_text(self):
         return self.entry.getText()
@@ -224,7 +229,7 @@ class Image:
         self.img = g.Image(g.Point(self.x, self.y), self.filename)
         self.img.draw(self.window)
         self.drawn = True
-        objects.append(self.img)
+        objects.append(self)
         
     def hide(self):
         if self.drawn:
@@ -255,7 +260,7 @@ class Button:
         self.drawn = True
         c_x, c_y = self.get_center()
         self.text_obj = Text(c_x, c_y, self.text)
-        objects.append(self.rect)
+        objects.append(self)
     
     def hide(self):
         if self.drawn:
@@ -275,7 +280,10 @@ class Button:
         return p.x, p.y
     
     def is_touched(self, x, y):
-        return ((x >= self.x1) and (y >= self.y1)) and ((x <= self.x2) and (y <= self.y2))
+        if (x == None) or (y == None):
+            return False
+        else:
+            return ((x >= self.x1) and (y >= self.y1)) and ((x <= self.x2) and (y <= self.y2))
         
 #Polygon not working
 """class Polygon:

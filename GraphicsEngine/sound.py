@@ -3,10 +3,15 @@ import pygame
 pygame.mixer.init()
 
 class Sound:
-    def __init__(self, filename):
+    def __init__(self, filename, volume=100):
         self.filename = filename
-        pygame.mixer.music.load(self.filename)
+        self.sound = pygame.mixer.Sound(self.filename)
+        try:
+            volume /= 100
+        except ZeroDivisionError:
+            volume = 100/100
+        self.sound.set_volume(volume)
     
     def play(self):
-        pygame.mixer.music.play()
+        self.sound.play()
         

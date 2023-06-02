@@ -1,14 +1,16 @@
 import GraphicsEngine
+import sys
 from lupa import LuaRuntime
-filepath = "test.lua"
+filepath = "lua_example.lua"
 lua = LuaRuntime(unpack_returned_tuples=True)
 
 def run_process():
     global filepath, lua, g, text
     while True:
         if g.window.is_closed():
-            break
-        lua.execute("_process()")
+            sys.exit()
+        else:
+            lua.execute("_process()")
 
 g = lua.globals()
 g.engine = GraphicsEngine
