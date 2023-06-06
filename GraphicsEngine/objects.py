@@ -78,6 +78,12 @@ class Rect:
             return False
         else:
             return ((x >= self.x1) and (y >= self.y1)) and ((x <= self.x2) and (y <= self.y2))
+    
+    def is_colliding(self, x1, y1, x2, y2):
+        if ((x1 == None) or (y1 == None)) or (x2 == None) or (y2 == None):
+            return False
+        else:
+            return ((x1 >= self.x1) and (y1 >= self.y1)) or ((x2 <= self.x2) and (y2 <= self.y2))
 
 class Oval:
     def __init__(self, x1, y1, x2, y2, fill=None) -> None:

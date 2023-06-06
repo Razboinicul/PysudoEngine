@@ -3,7 +3,8 @@ import GraphicsEngine as ge
 def main():
     win = ge.Window("test", 800, 600)
     img = ge.Image(600, 400, "Queen_Crow.png")
-    rect = ge.Rect(10, 10, 100, 100)
+    rect = ge.Rect(15, 15, 500, 500)
+    rect1 = ge.Rect(15, 15, 25, 25)
     oval = ge.Oval(50, 50, 100, 85, "blue")
     circle = ge.Circle(300, 200, 25, "red")
     line = ge.Line(100, 25, 225, 75, "green")
@@ -13,6 +14,8 @@ def main():
     sound = ge.Sound("sound.wav", 75)
     sound.play()
     while True:
+        if rect.is_colliding(rect1.x1, rect1.y1, rect1.x2, rect1.y2): print("colliding")
+        else: rect1.move(0, 1)
         if not win.is_closed():
             key = win.key_pressed()
             x, y = win.get_click()
