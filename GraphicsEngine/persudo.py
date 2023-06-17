@@ -30,10 +30,12 @@ class Mode7:
     def draw(self):
         pg.surfarray.blit_array(self.app.screen, self.screen_array)
         imp = pg.image.load("textures/Sprite.png").convert()
-        sx = 256*self.pos[0]/2
-        sy = 256*self.pos[0]/2
+        sx = 32*self.pos[0]/2
+        sy = 32*self.pos[0]/2
+        if sx <= 0: sx = 32
+        if sy <= 0: sy = 32
         print(sx)
-        if sx <= 350: self.app.screen.blit(pg.transform.scale(imp, (sx, sy)), (HALF_WIDTH-self.pos[1]-self.angle*1000-sx, HALF_HEIGHT))
+        if sx <= 350: self.app.screen.blit(pg.transform.scale(imp, (sx, sy)), (HALF_WIDTH-(self.pos[1]*200)-(self.angle*1000), HALF_HEIGHT))
 
     @staticmethod
     @njit(fastmath=True, parallel=True)
