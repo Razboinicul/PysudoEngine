@@ -2,6 +2,7 @@ import pygame as pg
 import numpy as np
 from numba import njit, prange
 import sys
+objects = []
 WIN_RES = WIDTH, HEIGHT = 1920, 1080
 HALF_WIDTH, HALF_HEIGHT = WIDTH // 2, HEIGHT // 2
 FOCAL_LEN = 250
@@ -27,15 +28,9 @@ class Mode7:
         self.screen_array = self.render_frame(self.floor_array, self.screen_array,
                                               self.tex_size, self.angle, self.pos, self.alt)
 
-    def draw(self):
-        pg.surfarray.blit_array(self.app.screen, self.screen_array)
-        imp = pg.image.load("textures/Sprite.png").convert()
-        sx = 32*self.pos[0]*2
-        sy = 32*self.pos[0]*2
-        if sx <= 0: sx = 32*0.1
-        if sy <= 0: sy = 32*0.1
-        print(self.alt)
-        if sx <= 350: self.app.screen.blit(pg.transform.scale(imp, (sx, sy)), (HALF_WIDTH-(self.pos[1]*200)-(self.angle*1000), HALF_HEIGHT-(self.alt*40-sy)))
+    def draw(self, screen, scr_array):
+        pg.surfarray.blit_array(screen, scr_array)
+        for i in objects: i.draw(screen)
 
     @staticmethod
     @njit(fastmath=True, parallel=True)
@@ -100,6 +95,26 @@ class Mode7:
             self.alt -= SPEED
         self.alt = min(max(self.alt, 0.3), 4.0)
 
+class Sprite:
+    def __init__(self, x, y, sprite) -> None:
+        global objects
+        self.x, self.y = x, y
+        self.imp = pg.image.load(sprite).convert()
+        objects.append(self)
+    
+    def draw(self, window, pos, angle):
+        sx = 32*self.pos[0]*2
+        sy = 32*self.pos[0]*2
+        if sx <= 0: sx = 32*0.1
+        if sy <= 0: sy = 32*0.1
+        hx = sx/2
+        hy = sy/2
+        posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
+        posy = HALF_HEIGHT+self.y-hy
+        print(sx)
+        if sx >= 20 and sx <= 400: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
+        
+
 class PersudoWindow:
     def __init__(self, floor_tex):
         self.screen = pg.display.set_mode(WIN_RES)
@@ -112,7 +127,7 @@ class PersudoWindow:
         pg.display.set_caption(f'{self.clock.get_fps() : .1f}')
 
     def draw(self):
-        self.mode7.draw()
+        self.mode7.draw(self.screen, self.mode7.screen_array)
         pg.display.flip()
 
     def get_time(self):
