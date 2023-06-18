@@ -34,8 +34,8 @@ class Mode7:
         sy = 32*self.pos[0]*2
         if sx <= 0: sx = 32*0.1
         if sy <= 0: sy = 32*0.1
-        print(self.pos[0])
-        if sx <= 350: self.app.screen.blit(pg.transform.scale(imp, (sx, sy)), (HALF_WIDTH-(self.pos[1]*200)-(self.angle*1000), HALF_HEIGHT))
+        print(self.alt)
+        if sx <= 350: self.app.screen.blit(pg.transform.scale(imp, (sx, sy)), (HALF_WIDTH-(self.pos[1]*200)-(self.angle*1000), HALF_HEIGHT-(self.alt*40-sy)))
 
     @staticmethod
     @njit(fastmath=True, parallel=True)
