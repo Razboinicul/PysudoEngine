@@ -30,7 +30,7 @@ class Mode7:
 
     def draw(self, screen, scr_array):
         pg.surfarray.blit_array(screen, scr_array)
-        for i in objects: i.draw(screen)
+        for i in objects: i.draw(screen, self.pos, self.angle)
 
     @staticmethod
     @njit(fastmath=True, parallel=True)
@@ -103,8 +103,8 @@ class Sprite:
         objects.append(self)
     
     def draw(self, window, pos, angle):
-        sx = 32*self.pos[0]*2
-        sy = 32*self.pos[0]*2
+        sx = 32*pos[0]*2
+        sy = 32*pos[0]*2
         if sx <= 0: sx = 32*0.1
         if sy <= 0: sy = 32*0.1
         hx = sx/2
@@ -148,4 +148,5 @@ class PersudoWindow:
 
 if __name__ == '__main__':
     app = PersudoWindow('textures/floor_1.png')
+    s = Sprite(0, 0, "textures/Sprite.png")
     while True: app.run()
