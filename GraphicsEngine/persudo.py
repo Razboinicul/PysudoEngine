@@ -3,11 +3,14 @@ import numpy as np
 from numba import njit, prange
 import sys
 objects = []
+pos = [0, 0]
+angle = 0
 WIN_RES = WIDTH, HEIGHT = 1920, 1080
 HALF_WIDTH, HALF_HEIGHT = WIDTH // 2, HEIGHT // 2
 FOCAL_LEN = 250
 SCALE = 100
 SPEED = 0.1
+pg.mixer.init(channels=2)
 
 class Mode7:
     def __init__(self, app, f_tex):
@@ -24,9 +27,11 @@ class Mode7:
         self.pos = np.array([0.0, 0.0])
 
     def update(self):
+        global pos, angle
         self.movement()
         self.screen_array = self.render_frame(self.floor_array, self.screen_array,
                                               self.tex_size, self.angle, self.pos, self.alt)
+        pos, angle = self.pos, self.angle
 
     def draw(self, screen, scr_array):
         pg.surfarray.blit_array(screen, scr_array)
@@ -96,9 +101,9 @@ class Mode7:
         self.alt = min(max(self.alt, 0.3), 4.0)
 
 class Sprite:
-    def __init__(self, x, y, sprite) -> None:
+    def __init__(self, sprite, x=0, y=0, angle=0) -> None:
         global objects
-        self.x, self.y = x, y
+        self.x, self.y, self.angle = x, y, angle
         self.imp = pg.image.load(sprite).convert()
         objects.append(self)
     
@@ -109,11 +114,30 @@ class Sprite:
         if sy <= 0: sy = 32*0.1
         hx = sx/2
         hy = sy/2
+        (-self.angle)
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
         posy = HALF_HEIGHT+self.y-hy
         print(sx)
-        if sx >= 20 and sx <= 400: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
-        
+        if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
+
+class Sound3D:
+    def __init__(self, file, volume=100, x=0, y=0) -> None:
+        global objects
+        self.file, self.volume, self.x, self.y = file, volume, x, y
+        self.sound = pg.mixer.Sound(self.file)
+        self.sound.set_volume(volume/100)
+        objects.append(self)
+        self.music_channel = pg.mixer.Channel(0)
+    
+    def update_volume(self, left_channel, right_channel):
+        self.music_channel.set_volume(left_channel/100, right_channel/100)
+    
+    def draw(self, w, pos, angle):
+        HALF_WIDTH=1920/2
+        posx = HALF_WIDTH-self.x-(pos[1]*300)-(angle*1000)
+        self.update_volume(HALF_WIDTH-(posx), HALF_WIDTH+(posx))
+    
+    def play(self): self.sound.play()       
 
 class PersudoWindow:
     def __init__(self, floor_tex):
@@ -148,5 +172,7 @@ class PersudoWindow:
 
 if __name__ == '__main__':
     app = PersudoWindow('textures/floor_1.png')
-    s = Sprite(0, 0, "textures/Sprite.png")
+    s = Sprite('textures/Sprite.png', 0, 0, 10)
+    sound = Sound3D("sound.wav")
+    sound.play()
     while True: app.run()

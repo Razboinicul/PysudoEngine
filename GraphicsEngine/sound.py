@@ -1,6 +1,6 @@
 import pygame
 
-pygame.mixer.init()
+pygame.mixer.init(channels=2)
 
 class Sound:
     def __init__(self, filename, volume=100):
@@ -14,4 +14,3 @@ class Sound:
     
     def play(self):
         self.sound.play()
-        
