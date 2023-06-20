@@ -13,23 +13,23 @@ SPEED = 0.1
 pg.mixer.init(channels=2)
 
 class Mode7:
-    def __init__(self, app, f_tex):
+    def __init__(self, app, f_tex, c_tex):
         self.app = app
         self.floor_tex = pg.image.load(f_tex).convert()
         self.tex_size = self.floor_tex.get_size()
         self.floor_array = pg.surfarray.array3d(self.floor_tex)
-
-
+        self.ceil_tex = pg.image.load(c_tex).convert()
+        self.ceil_tex = pg.transform.scale(self.ceil_tex, self.tex_size)
+        self.ceil_array = pg.surfarray.array3d(self.ceil_tex)
         self.screen_array = pg.surfarray.array3d(pg.Surface(WIN_RES))
-
-        self.alt = 1.0
+        self.alt = 10000.0
         self.angle = 0.0
         self.pos = np.array([0.0, 0.0])
 
     def update(self):
         global pos, angle
         self.movement()
-        self.screen_array = self.render_frame(self.floor_array, self.screen_array,
+        self.screen_array = self.render_frame(self.floor_array, self.ceil_array, self.screen_array,
                                               self.tex_size, self.angle, self.pos, self.alt)
         pos, angle = self.pos, self.angle
 
@@ -39,7 +39,7 @@ class Mode7:
 
     @staticmethod
     @njit(fastmath=True, parallel=True)
-    def render_frame(floor_array, screen_array, tex_size, angle, player_pos, alt):
+    def render_frame(floor_array, ceil_array, screen_array, tex_size, angle, player_pos, alt):
         sin, cos = np.sin(angle), np.cos(angle)
         for i in prange(WIDTH):
             new_alt = alt
@@ -53,16 +53,21 @@ class Mode7:
                 floor_y = py / z + player_pos[0]
                 floor_pos = int(floor_x * SCALE % tex_size[0]), int(floor_y * SCALE % tex_size[1])
                 floor_col = floor_array[floor_pos]
-                #ceil_x = alt * px / z - player_pos[1] * 0.3
-                #ceil_y = alt * py / z + player_pos[0] * 0.3
-                #ceil_pos = int(ceil_x * SCALE % tex_size[0]), int(ceil_y * SCALE % tex_size[1])
+                ceil_x = alt * px / z - player_pos[1] * 0.3
+                ceil_y = alt * py / z + player_pos[0] * 0.3
+                ceil_pos = int(ceil_x * SCALE % tex_size[0]), int(ceil_y * SCALE % tex_size[1])
+                ceil_col = ceil_array[ceil_pos]
                 #depth = 4 * abs(z) / HALF_HEIGHT
                 depth = min(max(2.5 * (abs(z) / HALF_HEIGHT), 0), 1)
                 fog = (1 - depth) * 230
                 floor_col = (floor_col[0] * depth + fog,
                              floor_col[1] * depth + fog,
                              floor_col[2] * depth + fog)
+                ceil_col = (ceil_col[0] * depth + fog,
+                            ceil_col[1] * depth + fog,
+                            ceil_col[2] * depth + fog)
                 screen_array[i, j] = floor_col
+                screen_array[i, -j] = ceil_col
                 new_alt += alt
         return screen_array
 
@@ -94,22 +99,64 @@ class Mode7:
         if keys[pg.K_RIGHT]:
             self.angle += SPEED/2
 
-        if keys[pg.K_q]:
-            self.alt += SPEED
-        if keys[pg.K_e]:
-            self.alt -= SPEED
+        #if keys[pg.K_q]:
+            #self.alt += SPEED
+        #if keys[pg.K_e]:
+            #self.alt -= SPEED
         self.alt = min(max(self.alt, 0.3), 4.0)
 
 class Sprite:
     def __init__(self, sprite, x=0, y=0, angle=0) -> None:
         global objects
         self.x, self.y, self.angle = x, y, angle
-        self.imp = pg.image.load(sprite).convert()
+        self.imp = pg.image.load(sprite).convert_alpha()
         objects.append(self)
     
     def draw(self, window, pos, angle):
         sx = 32*pos[0]*2
         sy = 32*pos[0]*2
+        if sx <= 0: sx = 32*0.1
+        if sy <= 0: sy = 32*0.1
+        hx = sx/2
+        hy = sy/2
+        (-self.angle)
+        posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
+        posy = HALF_HEIGHT+self.y-hy
+        print(sx)
+        if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
+
+class Rect3D:
+    def __init__(self, x=0, y=0, w=10, h=10, angle=0) -> None:
+        global objects
+        self.x, self.y, self.w, self.h, self.angle = x, y, w, h, angle
+        self.RED = (255, 0, 0)
+        self.imp = pg.image.load("textures/rect.png").convert()
+        objects.append(self)
+    
+    def draw(self, window, pos, angle):
+        sx = 32*pos[0]+self.w*2
+        sy = 32*pos[0]+self.h*2
+        if sx <= 0: sx = 32*0.1
+        if sy <= 0: sy = 32*0.1
+        hx = sx/2
+        hy = sy/2
+        (-self.angle)
+        posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
+        posy = HALF_HEIGHT+self.y-hy
+        print(sx)
+        if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
+    
+class Oval3D:
+    def __init__(self, x=0, y=0, w=10, h=10, angle=0) -> None:
+        global objects
+        self.x, self.y, self.w, self.h, self.angle = x, y, w, h, angle
+        self.RED = (255, 0, 0)
+        self.imp = pg.image.load("textures/circle.png").convert_alpha()
+        objects.append(self)
+    
+    def draw(self, window, pos, angle):
+        sx = 32*pos[0]+self.w*2
+        sy = 32*pos[0]+self.h*2
         if sx <= 0: sx = 32*0.1
         if sy <= 0: sy = 32*0.1
         hx = sx/2
@@ -140,10 +187,10 @@ class Sound3D:
     def play(self): self.sound.play()       
 
 class PersudoWindow:
-    def __init__(self, floor_tex):
+    def __init__(self, floor_tex, c_tex):
         self.screen = pg.display.set_mode(WIN_RES)
         self.clock = pg.time.Clock()
-        self.mode7 = Mode7(self, floor_tex)
+        self.mode7 = Mode7(self, floor_tex, c_tex)
 
     def update(self):
         self.mode7.update()
@@ -171,8 +218,10 @@ class PersudoWindow:
 
 
 if __name__ == '__main__':
-    app = PersudoWindow('textures/floor_1.png')
-    s = Sprite('textures/Sprite.png', 0, 0, 10)
+    app = PersudoWindow('textures/floor_1.png', 'textures/ceil_2.png')
+    #s = Sprite('textures/Sprite.png', 0, 0, 10)
     sound = Sound3D("sound.wav")
+    r = Rect3D(10, 10, 15, 15, 25)
+    c = Oval3D(150, 15, 10, 25, 60)
     sound.play()
     while True: app.run()
