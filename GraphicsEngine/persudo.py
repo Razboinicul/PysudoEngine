@@ -1,7 +1,8 @@
 import pygame as pg
 import numpy as np
 from numba import njit, prange
-import sys
+from .compressing import tmpdir
+import sys, os
 objects = []
 pos = [0, 0]
 angle = 0
@@ -15,12 +16,14 @@ pg.mixer.init(channels=2)
 class Mode7:
     def __init__(self, app, f_tex, c_tex):
         self.app = app
+        os.chdir(tmpdir+'/assets')
         self.floor_tex = pg.image.load(f_tex).convert()
         self.tex_size = self.floor_tex.get_size()
         self.floor_array = pg.surfarray.array3d(self.floor_tex)
         self.ceil_tex = pg.image.load(c_tex).convert()
         self.ceil_tex = pg.transform.scale(self.ceil_tex, self.tex_size)
         self.ceil_array = pg.surfarray.array3d(self.ceil_tex)
+        os.chdir("..")
         self.screen_array = pg.surfarray.array3d(pg.Surface(WIN_RES))
         self.alt = 10000.0
         self.angle = 0.0
@@ -130,7 +133,9 @@ class Rect3D:
         global objects
         self.x, self.y, self.w, self.h, self.angle = x, y, w, h, angle
         self.RED = (255, 0, 0)
-        self.imp = pg.image.load("textures/rect.png").convert()
+        os.chdir('assets')
+        self.imp = pg.image.load("rect.png").convert()
+        os.chdir('..')
         objects.append(self)
     
     def draw(self, window, pos, angle):
@@ -151,7 +156,9 @@ class Oval3D:
         global objects
         self.x, self.y, self.w, self.h, self.angle = x, y, w, h, angle
         self.RED = (255, 0, 0)
-        self.imp = pg.image.load("textures/circle.png").convert_alpha()
+        os.chdir('assets')
+        self.imp = pg.image.load("circle.png").convert_alpha()
+        os.chdir('..')
         objects.append(self)
     
     def draw(self, window, pos, angle):
@@ -167,11 +174,32 @@ class Oval3D:
         print(sx)
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
 
+class Text3D:
+    def __init__(self, x=0, y=0, text="", size=1000, t_color=(0, 0, 0), f_color=(256, 256, 256)) -> None:
+        global objects
+        pg.font.init()
+        self.x, self.y, self.text, self.size, self.t_color, self.f_color = x, y, text, size, t_color, f_color
+        self.white=(255, 255, 255)
+        objects.append(self)
+    
+    def draw(self, window, pos, angle):
+        s = self.size*pos[0]*2
+        if s <= 0: s = self.size*0.1
+        (-angle)
+        posx = HALF_WIDTH+self.x-(pos[1]*300)-(angle*1000)
+        posy = HALF_HEIGHT+self.y
+        font = pg.font.SysFont('Sans Serif', s)
+        text = font.render(self.text, True, self.white)
+        textRect = text.get_rect()
+        if s >= 20 and s <= 500: window.blit(text, (posx, posy))
+
 class Sound3D:
     def __init__(self, file, volume=100, x=0, y=0) -> None:
         global objects
         self.file, self.volume, self.x, self.y = file, volume, x, y
+        os.chdir('assets')
         self.sound = pg.mixer.Sound(self.file)
+        os.chdir('..')
         self.sound.set_volume(volume/100)
         objects.append(self)
         self.music_channel = pg.mixer.Channel(0)
@@ -215,13 +243,16 @@ class PersudoWindow:
         self.get_time()
         self.update()
         self.draw()
+    
+    def gameloop(self): 
+        while True: self.run()
 
 
 if __name__ == '__main__':
-    app = PersudoWindow('textures/floor_1.png', 'textures/ceil_2.png')
+    app = PersudoWindow('floor_1.png', 'ceil_2.png')
     #s = Sprite('textures/Sprite.png', 0, 0, 10)
     sound = Sound3D("sound.wav")
     r = Rect3D(10, 10, 15, 15, 25)
     c = Oval3D(150, 15, 10, 25, 60)
     sound.play()
-    while True: app.run()
+    app.gameloop()

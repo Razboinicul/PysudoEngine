@@ -1,7 +1,9 @@
 from GraphicsEngine import *
 
-app = PersudoWindow('textures/floor_1.png', 'textures/ceil_2.png')
-s = Sprite('textures/Sprite.png', 0, 0, 10)
+app = PersudoWindow('floor_1.png', 'ceil_2.png')
+#s = Sprite('textures/Sprite.png', 0, 0, 10)
 sound = Sound3D("sound.wav")
+r = Rect3D(10, 10, 15, 15, 25)
+c = Oval3D(150, 15, 10, 25, 60)
 sound.play()
-while True: app.run()
+app.gameloop()
