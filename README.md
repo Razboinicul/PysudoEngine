@@ -1,5 +1,5 @@
 # GraphicsEngine
- A game engine made using graphics.py
+ A game engine made using graphics.py and PyGame
  
 # Credits
 sound.wav by [josepres](https://freesound.org/people/josefpres/)
