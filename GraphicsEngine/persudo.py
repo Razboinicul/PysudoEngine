@@ -1,8 +1,8 @@
 import pygame as pg
 import numpy as np
-import math
+from tempfile import gettempdir
+from platform import system
 from numba import njit, prange
-from compressing import tmpdir
 import sys, os
 objects = []
 pos = [0, 0]
@@ -13,11 +13,14 @@ FOCAL_LEN = 250
 SCALE = 100
 SPEED = 0.1
 pg.mixer.init(channels=2)
+if system() == 'Windows': tmpdir = gettempdir() + '\\.getemp'
+elif system() == 'Linux': tmpdir = gettempdir() + '/.getemp'
+else: tmpdir = gettempdir() + '/.getemp'
 camera_modes = {"static":0, "FPS":1}
 
 class Mode7:
-    def __init__(self, app, f_tex, c_tex, cmode=0, weapon_col="assets/rect.png"):
-        self.app, self.cmode = app, cmode
+    def __init__(self, app, f_tex, c_tex, cmode=1, weapon_col="assets/rect.png", borders=None):
+        self.app, self.cmode, self.borders = app, cmode, borders
         self.floor_tex = pg.image.load(f_tex).convert()
         self.tex_size = self.floor_tex.get_size()
         self.floor_array = pg.surfarray.array3d(self.floor_tex)
@@ -104,10 +107,14 @@ class Mode7:
                 dy += speed_cos
             if keys[pg.K_x]:
                 for i in objects: 
-                    if self.rect.colliderect(i.rect):
+                    if i.type != Sound3D and self.rect.colliderect(i.rect):
                         objects.remove(i)
-            self.pos[0] += dx
-            self.pos[1] += dy
+            if self.borders != None:
+                self.pos[0] = max(self.pos[0]+dx, self.borders[0])
+                self.pos[1] = max(self.pos[1]+dy, self.borders[2])
+            else:
+                self.pos[0] += dx
+                self.pos[1] += dy
 
             if keys[pg.K_LEFT]:
                 self.angle -= SPEED/2
@@ -120,12 +127,13 @@ class Mode7:
                 #self.alt -= SPEED
         self.alt = min(max(self.alt, 0.3), 4.0)
 
-class Sprite:
+class Sprite3D:
     def __init__(self, sprite, x=0, y=0, angle=0) -> None:
         global objects
         self.x, self.y, self.angle = x, y, angle
         self.imp = pg.image.load(sprite).convert_alpha()
         self.rect = self.imp.get_rect(topleft = (x, y))
+        self.type = Sprite3D
         objects.append(self)
     
     def draw(self, window, pos, angle):
@@ -149,6 +157,7 @@ class Rect3D:
         os.chdir('assets')
         self.imp = pg.image.load("rect.png").convert()
         self.rect = self.imp.get_rect(topleft = (x, y))
+        self.type = Rect3D
         os.chdir('..')
         objects.append(self)
     
@@ -171,6 +180,7 @@ class Oval3D:
         global objects
         self.x, self.y, self.w, self.h, self.angle = x, y, w, h, angle
         self.RED = (255, 0, 0)
+        self.type = Oval3D
         os.chdir('assets')
         self.imp = pg.image.load("circle.png").convert_alpha()
         self.rect = self.imp.get_rect(topleft = (x, y))
@@ -196,6 +206,7 @@ class Text3D:
         global objects
         pg.font.init()
         self.x, self.y, self.text, self.size, self.t_color, self.f_color = x, y, text, size, t_color, f_color
+        self.type = Text3D
         self.white=(255, 255, 255)
         objects.append(self)
     
@@ -209,6 +220,7 @@ class Text3D:
         text = font.render(self.text, True, self.white)
         textRect = text.get_rect()
         if s >= 20 and s <= 500: window.blit(text, (posx, posy))
+        if s >= 495 and s <= 505: sys.quit()
 
 class Sound3D:
     def __init__(self, file, volume=100, x=0, y=0) -> None:
@@ -216,6 +228,7 @@ class Sound3D:
         self.file, self.volume, self.x, self.y = file, volume, x, y
         os.chdir('assets')
         self.sound = pg.mixer.Sound(self.file)
+        self.type = Sound3D
         os.chdir('..')
         self.sound.set_volume(volume/100)
         objects.append(self)
@@ -232,11 +245,11 @@ class Sound3D:
     def play(self): self.sound.play()
 
 class PersudoWindow:
-    def __init__(self, floor_tex, c_tex):
+    def __init__(self, floor_tex, c_tex, cmode, borders=None):
         os.chdir(tmpdir+'/assets')
         self.screen = pg.display.set_mode(WIN_RES)
         self.clock = pg.time.Clock()
-        self.mode7 = Mode7(self, floor_tex, c_tex)
+        self.mode7 = Mode7(self, floor_tex, c_tex, cmode=cmode, borders=borders)
 
     def update(self):
         self.mode7.update()
@@ -266,7 +279,7 @@ class PersudoWindow:
         while True: self.run()
 
 if __name__ == '__main__':
-    app = PersudoWindow('floor_1.png', 'ceil_2.png')
+    app = PersudoWindow('floor_1.png', 'ceil_2.png', camera_modes['FPS'])
     #s = Sprite('textures/Sprite.png', 0, 0, 10)
     #sound = Sound3D("sound.wav")
     r = Rect3D(10, 10, 15, 15, 25)

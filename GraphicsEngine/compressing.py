@@ -26,6 +26,7 @@ def write_zipfile():
 
 
 def read_zipfile():
+    if not os.path.exists(tmpdir): os.mkdir(tmpdir)
     if os.path.exists(tmpdir):
       shutil.rmtree(tmpdir)
       os.mkdir(tmpdir)
