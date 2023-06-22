@@ -1,7 +1,8 @@
 import pygame as pg
 import numpy as np
+import math
 from numba import njit, prange
-from .compressing import tmpdir
+from compressing import tmpdir
 import sys, os
 objects = []
 pos = [0, 0]
@@ -12,11 +13,11 @@ FOCAL_LEN = 250
 SCALE = 100
 SPEED = 0.1
 pg.mixer.init(channels=2)
+camera_modes = {"static":0, "FPS":1}
 
 class Mode7:
-    def __init__(self, app, f_tex, c_tex):
-        self.app = app
-        os.chdir(tmpdir+'/assets')
+    def __init__(self, app, f_tex, c_tex, cmode=0, weapon_col="assets/rect.png"):
+        self.app, self.cmode = app, cmode
         self.floor_tex = pg.image.load(f_tex).convert()
         self.tex_size = self.floor_tex.get_size()
         self.floor_array = pg.surfarray.array3d(self.floor_tex)
@@ -25,6 +26,9 @@ class Mode7:
         self.ceil_array = pg.surfarray.array3d(self.ceil_tex)
         os.chdir("..")
         self.screen_array = pg.surfarray.array3d(pg.Surface(WIN_RES))
+        if cmode == 1:
+            self.imp = pg.image.load(weapon_col).convert_alpha()
+            self.rect = self.imp.get_rect(topleft = (HALF_WIDTH, HALF_HEIGHT))
         self.alt = 10000.0
         self.angle = 0.0
         self.pos = np.array([0.0, 0.0])
@@ -39,6 +43,10 @@ class Mode7:
     def draw(self, screen, scr_array):
         pg.surfarray.blit_array(screen, scr_array)
         for i in objects: i.draw(screen, self.pos, self.angle)
+        if self.cmode == 1:
+            posx = HALF_WIDTH
+            posy = HALF_HEIGHT
+            self.app.screen.blit(pg.transform.scale(self.imp, (16, 16)), (posx, posy))
 
     @staticmethod
     @njit(fastmath=True, parallel=True)
@@ -75,37 +83,41 @@ class Mode7:
         return screen_array
 
     def movement(self):
-        keys = pg.key.get_pressed()
-        sin_a = np.sin(self.angle)
-        cos_a = np.cos(self.angle)
-        dx, dy = 0, 0
-        speed_sin = SPEED * sin_a
-        speed_cos = SPEED * cos_a
+        if self.cmode == 1:
+            keys = pg.key.get_pressed()
+            sin_a = np.sin(self.angle)
+            cos_a = np.cos(self.angle)
+            dx, dy = 0, 0
+            speed_sin = SPEED * sin_a
+            speed_cos = SPEED * cos_a
+            if keys[pg.K_w]:
+                dx += speed_cos
+                dy += speed_sin
+            if keys[pg.K_s]:
+                dx += -speed_cos
+                dy += -speed_sin
+            if keys[pg.K_a]:
+                dx += speed_sin
+                dy += -speed_cos
+            if keys[pg.K_d]:
+                dx += -speed_sin
+                dy += speed_cos
+            if keys[pg.K_x]:
+                for i in objects: 
+                    if self.rect.colliderect(i.rect):
+                        objects.remove(i)
+            self.pos[0] += dx
+            self.pos[1] += dy
 
-        if keys[pg.K_w]:
-            dx += speed_cos
-            dy += speed_sin
-        if keys[pg.K_s]:
-            dx += -speed_cos
-            dy += -speed_sin
-        if keys[pg.K_a]:
-            dx += speed_sin
-            dy += -speed_cos
-        if keys[pg.K_d]:
-            dx += -speed_sin
-            dy += speed_cos
-        self.pos[0] += dx
-        self.pos[1] += dy
+            if keys[pg.K_LEFT]:
+                self.angle -= SPEED/2
+            if keys[pg.K_RIGHT]:
+                self.angle += SPEED/2
 
-        if keys[pg.K_LEFT]:
-            self.angle -= SPEED/2
-        if keys[pg.K_RIGHT]:
-            self.angle += SPEED/2
-
-        #if keys[pg.K_q]:
-            #self.alt += SPEED
-        #if keys[pg.K_e]:
-            #self.alt -= SPEED
+            #if keys[pg.K_q]:
+                #self.alt += SPEED
+            #if keys[pg.K_e]:
+                #self.alt -= SPEED
         self.alt = min(max(self.alt, 0.3), 4.0)
 
 class Sprite:
@@ -113,6 +125,7 @@ class Sprite:
         global objects
         self.x, self.y, self.angle = x, y, angle
         self.imp = pg.image.load(sprite).convert_alpha()
+        self.rect = self.imp.get_rect(topleft = (x, y))
         objects.append(self)
     
     def draw(self, window, pos, angle):
@@ -125,7 +138,7 @@ class Sprite:
         (-self.angle)
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
         posy = HALF_HEIGHT+self.y-hy
-        print(sx)
+        self.rect = self.imp.get_rect(topleft = (posx, posy))
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
 
 class Rect3D:
@@ -135,6 +148,7 @@ class Rect3D:
         self.RED = (255, 0, 0)
         os.chdir('assets')
         self.imp = pg.image.load("rect.png").convert()
+        self.rect = self.imp.get_rect(topleft = (x, y))
         os.chdir('..')
         objects.append(self)
     
@@ -148,6 +162,7 @@ class Rect3D:
         (-self.angle)
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
         posy = HALF_HEIGHT+self.y-hy
+        self.rect = self.imp.get_rect(topleft = (posx, posy))
         print(sx)
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
     
@@ -158,6 +173,7 @@ class Oval3D:
         self.RED = (255, 0, 0)
         os.chdir('assets')
         self.imp = pg.image.load("circle.png").convert_alpha()
+        self.rect = self.imp.get_rect(topleft = (x, y))
         os.chdir('..')
         objects.append(self)
     
@@ -171,6 +187,7 @@ class Oval3D:
         (-self.angle)
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
         posy = HALF_HEIGHT+self.y-hy
+        self.rect = self.imp.get_rect(topleft = (posx, posy))
         print(sx)
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
 
@@ -212,10 +229,11 @@ class Sound3D:
         posx = HALF_WIDTH-self.x-(pos[1]*300)-(angle*1000)
         self.update_volume(HALF_WIDTH-(posx), HALF_WIDTH+(posx))
     
-    def play(self): self.sound.play()       
+    def play(self): self.sound.play()
 
 class PersudoWindow:
     def __init__(self, floor_tex, c_tex):
+        os.chdir(tmpdir+'/assets')
         self.screen = pg.display.set_mode(WIN_RES)
         self.clock = pg.time.Clock()
         self.mode7 = Mode7(self, floor_tex, c_tex)
@@ -247,12 +265,11 @@ class PersudoWindow:
     def gameloop(self): 
         while True: self.run()
 
-
 if __name__ == '__main__':
     app = PersudoWindow('floor_1.png', 'ceil_2.png')
     #s = Sprite('textures/Sprite.png', 0, 0, 10)
-    sound = Sound3D("sound.wav")
+    #sound = Sound3D("sound.wav")
     r = Rect3D(10, 10, 15, 15, 25)
     c = Oval3D(150, 15, 10, 25, 60)
-    sound.play()
+    #wsound.play()
     app.gameloop()

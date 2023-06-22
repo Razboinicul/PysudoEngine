@@ -3,6 +3,7 @@ import os, shutil
 from subprocess import run
 from tempfile import gettempdir
 from platform import system
+cwd = os.getcwd()
 
 def get_all_file_paths(directory):
   file_paths = []
@@ -25,25 +26,24 @@ def write_zipfile():
 
 
 def read_zipfile():
-    shutil.rmtree(tmpdir)
-    os.mkdir(tmpdir)
+    if os.path.exists(tmpdir):
+      shutil.rmtree(tmpdir)
+      os.mkdir(tmpdir)
     with ZipFile('pack.enres', 'r') as pack:
         pack.extractall(path=tmpdir)
     os.chdir(tmpdir)
 
 def build(gamepath):
+    os.chdir(cwd)
     write_zipfile()
-    f = open(gamepath, 'r')
-    l = f.readlines()
-    l.insert(1, 'read_zipfile()\n')
-    f.close()
-    f = open("test", "w")
-    f.writelines(l)
-    f.close()
     if not os.path.exists("Build"): os.mkdir("Build")
     run(['pyinstaller', '--onefile', '--name', 'build', '-w', gamepath])
     os.rename('pack.enres', 'Build/pack.enres')
     os.rename('dist/build', 'Build/build')
+    shutil.rmtree('dist')
+    shutil.rmtree('build')
+    os.remove('build.spec')
+    os.chdir(tmpdir)
         
 
 if system() == 'Windows': tmpdir = gettempdir() + '\\.getemp'
