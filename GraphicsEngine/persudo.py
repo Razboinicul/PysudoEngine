@@ -52,8 +52,8 @@ class Mode7:
             posx = HALF_WIDTH
             posy = HALF_HEIGHT
             self.app.screen.blit(pg.transform.scale(self.imp, (16, 16)), (posx, posy))
-            if self.shooting: self.app.screen.blit(self.w2, (HALF_WIDTH+40, HALF_HEIGHT+40))
-            else: self.app.screen.blit(self.w1, (HALF_WIDTH+40, HALF_HEIGHT+40))
+            if self.shooting: self.app.screen.blit(self.w2, (HALF_WIDTH, HEIGHT-300))
+            else: self.app.screen.blit(self.w1, (HALF_WIDTH, HEIGHT-300))
                 
 
     @staticmethod
