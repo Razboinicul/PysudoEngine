@@ -132,7 +132,7 @@ class Sprite3D:
         global objects
         self.x, self.y, self.angle = x, y, angle
         self.imp = pg.image.load(sprite).convert_alpha()
-        self.rect = self.imp.get_rect(center = (x, y))
+        self.rect = self.imp.get_rect(topleft = (x, y))
         self.type = Sprite3D
         objects.append(self)
     
@@ -147,7 +147,7 @@ class Sprite3D:
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
         posy = HALF_HEIGHT+self.y-hy
         imp = pg.transform.scale(self.imp, (sx, sy))
-        self.rect = imp.get_rect(center = (posx, posy))
+        self.rect = imp.get_rect(topleft = (posx, posy))
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
 
 class Rect3D:
@@ -157,7 +157,7 @@ class Rect3D:
         self.RED = (255, 0, 0)
         os.chdir('assets')
         self.imp = pg.image.load("rect.png").convert()
-        self.rect = self.imp.get_rect(center = (x, y))
+        self.rect = self.imp.get_rect(topleft = (x, y))
         self.type = Rect3D
         os.chdir('..')
         objects.append(self)
@@ -173,7 +173,7 @@ class Rect3D:
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
         posy = HALF_HEIGHT+self.y-hy
         imp = pg.transform.scale(self.imp, (sx, sy))
-        self.rect = imp.get_rect(center = (posx, posy))
+        self.rect = imp.get_rect(topleft = (posx, posy))
         print(sx)
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
         if pos[1] == posx: print("colliding")
@@ -186,7 +186,7 @@ class Oval3D:
         self.type = Oval3D
         os.chdir('assets')
         self.imp = pg.image.load("circle.png").convert_alpha()
-        self.rect = self.imp.get_rect(center = (x, y))
+        self.rect = self.imp.get_rect(topleft = (x, y))
         os.chdir('..')
         objects.append(self)
     
@@ -201,7 +201,7 @@ class Oval3D:
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
         posy = HALF_HEIGHT+self.y-hy
         imp = pg.transform.scale(self.imp, (sx, sy))
-        self.rect = imp.get_rect(center = (posx, posy))
+        self.rect = imp.get_rect(topleft = (posx, posy))
         print(sx)
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
 
