@@ -1,6 +1,5 @@
 import pygame as pg
 import pygame_gui as pgui
-import freetype
 import numpy as np
 from tempfile import gettempdir
 from platform import system
@@ -56,7 +55,7 @@ class Mode7:
             self.app.screen.blit(pg.transform.scale(self.imp, (16, 16)), (posx, posy))
             if self.shooting: self.app.screen.blit(self.w2, (HALF_WIDTH, HEIGHT-300))
             else: self.app.screen.blit(self.w1, (HALF_WIDTH, HEIGHT-300))
-            self.ammo = pgui.UITextBox(html_text=f'Ammo: {self.ammo}',relative_rect=pg.Rect(100, 100, 200, 50), manager=self.app.manager)
+            #self.ammo = pgui.UITextBox(html_text=f'Ammo: {self.ammo}',relative_rect=pg.Rect(100, 100, 200, 50), manager=self.app.manager)
                 
 
     @staticmethod
@@ -252,7 +251,7 @@ class Sound3D:
     def update_volume(self, left_channel, right_channel):
         self.music_channel.set_volume(left_channel/100, right_channel/100)
     
-    def draw(self, w, pos, angle):
+    def draw(self, _w, pos, angle):
         HALF_WIDTH=1920/2
         posx = HALF_WIDTH-self.x-(pos[1]*300)-(angle*1000)
         self.update_volume(HALF_WIDTH-(posx), HALF_WIDTH+(posx))
@@ -263,7 +262,7 @@ class PersudoWindow:
     def __init__(self, floor_tex, c_tex, cmode, borders=None):
         os.chdir(tmpdir+'/assets')
         self.screen = pg.display.set_mode(WIN_RES)
-        self.manager = pgui.UIManager(WIN_RES)
+        #self.manager = pgui.UIManager(WIN_RES)
         self.clock = pg.time.Clock()
         self.mode7 = Mode7(self, floor_tex, c_tex, cmode=cmode, borders=borders)
 

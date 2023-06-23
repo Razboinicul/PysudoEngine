@@ -1,4 +1,4 @@
-import GraphicsEngine as ge
+import PysudoEngine as ge
 
 def main():
     win = ge.Window("test", 800, 600)

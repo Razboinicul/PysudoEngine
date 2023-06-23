@@ -1,4 +1,4 @@
-import GraphicsEngine
+import PysudoEngine
 import sys
 from lupa import LuaRuntime
 filepath = "lua_example.lua"
@@ -14,8 +14,8 @@ def run_process():
 
 def interpret_code():
     g = lua.globals()
-    g.engine = GraphicsEngine
-    g.window = GraphicsEngine.Window("GraphicsEngine", 800, 600)
+    g.engine = PysudoEngine
+    g.window = PysudoEngine.Window("GraphicsEngine", 800, 600)
     f = open(filepath, "r+")
     read = f.readlines()
     f.close()

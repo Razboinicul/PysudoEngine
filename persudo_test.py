@@ -1,4 +1,4 @@
-from GraphicsEngine import *
+from PysudoEngine import *
 
 app = PersudoWindow('floor_1.png', 'ceil_2.png', camera_modes['Rotation-only'])
 #s = Sprite('textures/Sprite.png', 0, 0, 10)
