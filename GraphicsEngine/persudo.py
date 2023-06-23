@@ -16,7 +16,7 @@ pg.mixer.init(channels=2)
 if system() == 'Windows': tmpdir = gettempdir() + '\\.getemp'
 elif system() == 'Linux': tmpdir = gettempdir() + '/.getemp'
 else: tmpdir = gettempdir() + '/.getemp'
-camera_modes = {"static":0, "FPS":1}
+camera_modes = {"static":0, "FPS":1, "Rotation-only":2}
 
 class Mode7:
     def __init__(self, app, f_tex, c_tex, cmode=1, weapon_col="assets/rect.png", borders=None):
@@ -29,7 +29,7 @@ class Mode7:
         self.ceil_array = pg.surfarray.array3d(self.ceil_tex)
         os.chdir("..")
         self.screen_array = pg.surfarray.array3d(pg.Surface(WIN_RES))
-        if cmode == 1:
+        if (self.cmode == 1) or (self.cmode == 2):
             self.imp = pg.image.load(weapon_col).convert_alpha()
             self.rect = self.imp.get_rect(topleft = (HALF_WIDTH, HALF_HEIGHT))
         self.alt = 10000.0
@@ -46,7 +46,7 @@ class Mode7:
     def draw(self, screen, scr_array):
         pg.surfarray.blit_array(screen, scr_array)
         for i in objects: i.draw(screen, self.pos, self.angle)
-        if self.cmode == 1:
+        if (self.cmode == 1) or (self.cmode == 2):
             posx = HALF_WIDTH
             posy = HALF_HEIGHT
             self.app.screen.blit(pg.transform.scale(self.imp, (16, 16)), (posx, posy))
@@ -86,13 +86,13 @@ class Mode7:
         return screen_array
 
     def movement(self):
+        keys = pg.key.get_pressed()
+        sin_a = np.sin(self.angle)
+        cos_a = np.cos(self.angle)
+        dx, dy = 0, 0
+        speed_sin = SPEED * sin_a
+        speed_cos = SPEED * cos_a
         if self.cmode == 1:
-            keys = pg.key.get_pressed()
-            sin_a = np.sin(self.angle)
-            cos_a = np.cos(self.angle)
-            dx, dy = 0, 0
-            speed_sin = SPEED * sin_a
-            speed_cos = SPEED * cos_a
             if keys[pg.K_w]:
                 dx += speed_cos
                 dy += speed_sin
@@ -105,10 +105,6 @@ class Mode7:
             if keys[pg.K_d]:
                 dx += -speed_sin
                 dy += speed_cos
-            if keys[pg.K_x]:
-                for i in objects: 
-                    if i.type != Sound3D and self.rect.colliderect(i.rect):
-                        objects.remove(i)
             if self.borders != None:
                 self.pos[0] = max(self.pos[0]+dx, self.borders[0])
                 self.pos[1] = max(self.pos[1]+dy, self.borders[2])
@@ -116,6 +112,11 @@ class Mode7:
                 self.pos[0] += dx
                 self.pos[1] += dy
 
+        if (self.cmode == 1) or (self.cmode == 2):
+            if keys[pg.K_x]:
+                for i in objects: 
+                    if i.type != Sound3D and self.rect.colliderect(i.rect):
+                        objects.remove(i)
             if keys[pg.K_LEFT]:
                 self.angle -= SPEED/2
             if keys[pg.K_RIGHT]:
@@ -282,7 +283,7 @@ class PersudoWindow:
         while True: self.run()
 
 if __name__ == '__main__':
-    app = PersudoWindow('floor_1.png', 'ceil_2.png', camera_modes['FPS'])
+    app = PersudoWindow('floor_1.png', 'ceil_2.png', camera_modes['Rotation-only'])
     #s = Sprite('textures/Sprite.png', 0, 0, 10)
     #sound = Sound3D("sound.wav")
     r = Rect3D(10, 10, 15, 15, 25)
