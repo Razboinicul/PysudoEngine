@@ -1,4 +1,4 @@
-# GraphicsEngine
+# Pysudo Engine
  A game engine made using graphics.py and PyGame
  
 # Credits
