@@ -19,19 +19,21 @@ else: tmpdir = gettempdir() + '/.getemp'
 camera_modes = {"static":0, "FPS":1, "Rotation-only":2}
 
 class Mode7:
-    def __init__(self, app, f_tex, c_tex, cmode=1, weapon_col="assets/rect.png", borders=None):
-        self.app, self.cmode, self.borders = app, cmode, borders
+    def __init__(self, app, f_tex, c_tex, cmode=1, weapon_col="rect.png", borders=None):
+        self.app, self.cmode, self.borders, self.shooting = app, cmode, borders, False
         self.floor_tex = pg.image.load(f_tex).convert()
         self.tex_size = self.floor_tex.get_size()
         self.floor_array = pg.surfarray.array3d(self.floor_tex)
         self.ceil_tex = pg.image.load(c_tex).convert()
         self.ceil_tex = pg.transform.scale(self.ceil_tex, self.tex_size)
         self.ceil_array = pg.surfarray.array3d(self.ceil_tex)
-        os.chdir("..")
         self.screen_array = pg.surfarray.array3d(pg.Surface(WIN_RES))
         if (self.cmode == 1) or (self.cmode == 2):
+            self.w1 = pg.image.load("weapon-1.png").convert_alpha()
+            self.w2 = pg.image.load("weapon-2.png").convert_alpha()
             self.imp = pg.image.load(weapon_col).convert_alpha()
             self.rect = self.imp.get_rect(topleft = (HALF_WIDTH, HALF_HEIGHT))
+        os.chdir("..")
         self.alt = 10000.0
         self.angle = 0.0
         self.pos = np.array([0.0, 0.0])
@@ -50,6 +52,9 @@ class Mode7:
             posx = HALF_WIDTH
             posy = HALF_HEIGHT
             self.app.screen.blit(pg.transform.scale(self.imp, (16, 16)), (posx, posy))
+            if self.shooting: self.app.screen.blit(self.w2, (HALF_WIDTH+40, HALF_HEIGHT+40))
+            else: self.app.screen.blit(self.w1, (HALF_WIDTH+40, HALF_HEIGHT+40))
+                
 
     @staticmethod
     @njit(fastmath=True, parallel=True)
@@ -114,9 +119,12 @@ class Mode7:
 
         if (self.cmode == 1) or (self.cmode == 2):
             if keys[pg.K_x]:
+                self.shooting = True
                 for i in objects: 
                     if i.type != Sound3D and self.rect.colliderect(i.rect):
                         objects.remove(i)
+            else:
+                self.shooting = False
             if keys[pg.K_LEFT]:
                 self.angle -= SPEED/2
             if keys[pg.K_RIGHT]:
