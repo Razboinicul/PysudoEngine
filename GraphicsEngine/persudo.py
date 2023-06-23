@@ -1,4 +1,6 @@
 import pygame as pg
+import pygame_gui as pgui
+import freetype
 import numpy as np
 from tempfile import gettempdir
 from platform import system
@@ -20,7 +22,7 @@ camera_modes = {"static":0, "FPS":1, "Rotation-only":2}
 
 class Mode7:
     def __init__(self, app, f_tex, c_tex, cmode=1, weapon_col="rect.png", borders=None):
-        self.app, self.cmode, self.borders, self.shooting = app, cmode, borders, False
+        self.app, self.cmode, self.borders, self.shooting, self.ammo = app, cmode, borders, False, 150
         self.floor_tex = pg.image.load(f_tex).convert()
         self.tex_size = self.floor_tex.get_size()
         self.floor_array = pg.surfarray.array3d(self.floor_tex)
@@ -54,6 +56,7 @@ class Mode7:
             self.app.screen.blit(pg.transform.scale(self.imp, (16, 16)), (posx, posy))
             if self.shooting: self.app.screen.blit(self.w2, (HALF_WIDTH, HEIGHT-300))
             else: self.app.screen.blit(self.w1, (HALF_WIDTH, HEIGHT-300))
+            self.ammo = pgui.UITextBox(html_text=f'Ammo: {self.ammo}',relative_rect=pg.Rect(100, 100, 200, 50), manager=self.app.manager)
                 
 
     @staticmethod
@@ -118,11 +121,13 @@ class Mode7:
                 self.pos[1] += dy
 
         if (self.cmode == 1) or (self.cmode == 2):
-            if keys[pg.K_x]:
+            if keys[pg.K_x] and not self.shooting and self.ammo > 0:
                 self.shooting = True
                 for i in objects: 
-                    if i.type != Sound3D and self.rect.colliderect(i.rect):
+                    if i != Sound3D and self.rect.colliderect(i.rect):
                         objects.remove(i)
+                self.ammo -= 1
+                print(self.ammo)
             else:
                 self.shooting = False
             if keys[pg.K_LEFT]:
@@ -183,7 +188,6 @@ class Rect3D:
         posy = HALF_HEIGHT+self.y-hy
         imp = pg.transform.scale(self.imp, (sx, sy))
         self.rect = imp.get_rect(topleft = (posx, posy))
-        print(sx)
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
         if pos[1] == posx: print("colliding")
     
@@ -211,7 +215,6 @@ class Oval3D:
         posy = HALF_HEIGHT+self.y-hy
         imp = pg.transform.scale(self.imp, (sx, sy))
         self.rect = imp.get_rect(topleft = (posx, posy))
-        print(sx)
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
 
 class Text3D:
@@ -231,7 +234,7 @@ class Text3D:
         posy = HALF_HEIGHT+self.y
         font = pg.font.SysFont('Sans Serif', s)
         text = font.render(self.text, True, self.white)
-        textRect = text.get_rect()
+        #textRect = text.get_rect()
         if s >= 20 and s <= 500: window.blit(text, (posx, posy))
 
 class Sound3D:
@@ -260,6 +263,7 @@ class PersudoWindow:
     def __init__(self, floor_tex, c_tex, cmode, borders=None):
         os.chdir(tmpdir+'/assets')
         self.screen = pg.display.set_mode(WIN_RES)
+        self.manager = pgui.UIManager(WIN_RES)
         self.clock = pg.time.Clock()
         self.mode7 = Mode7(self, floor_tex, c_tex, cmode=cmode, borders=borders)
 
@@ -291,7 +295,7 @@ class PersudoWindow:
         while True: self.run()
 
 if __name__ == '__main__':
-    app = PersudoWindow('floor_1.png', 'ceil_2.png', camera_modes['Rotation-only'])
+    app = PersudoWindow('floor_1.png', 'ceil_2.png', camera_modes['FPS'])
     #s = Sprite('textures/Sprite.png', 0, 0, 10)
     #sound = Sound3D("sound.wav")
     r = Rect3D(10, 10, 15, 15, 25)
