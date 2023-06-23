@@ -132,7 +132,7 @@ class Sprite3D:
         global objects
         self.x, self.y, self.angle = x, y, angle
         self.imp = pg.image.load(sprite).convert_alpha()
-        self.rect = self.imp.get_rect(topleft = (x, y))
+        self.rect = self.imp.get_rect(center = (x, y))
         self.type = Sprite3D
         objects.append(self)
     
@@ -146,7 +146,8 @@ class Sprite3D:
         (-self.angle)
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
         posy = HALF_HEIGHT+self.y-hy
-        self.rect = self.imp.get_rect(topleft = (posx, posy))
+        imp = pg.transform.scale(self.imp, (sx, sy))
+        self.rect = imp.get_rect(center = (posx, posy))
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
 
 class Rect3D:
@@ -156,7 +157,7 @@ class Rect3D:
         self.RED = (255, 0, 0)
         os.chdir('assets')
         self.imp = pg.image.load("rect.png").convert()
-        self.rect = self.imp.get_rect(topleft = (x, y))
+        self.rect = self.imp.get_rect(center = (x, y))
         self.type = Rect3D
         os.chdir('..')
         objects.append(self)
@@ -171,9 +172,11 @@ class Rect3D:
         (-self.angle)
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
         posy = HALF_HEIGHT+self.y-hy
-        self.rect = self.imp.get_rect(topleft = (posx, posy))
+        imp = pg.transform.scale(self.imp, (sx, sy))
+        self.rect = imp.get_rect(center = (posx, posy))
         print(sx)
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
+        if pos[1] == posx: print("colliding")
     
 class Oval3D:
     def __init__(self, x=0, y=0, w=10, h=10, angle=0) -> None:
@@ -183,7 +186,7 @@ class Oval3D:
         self.type = Oval3D
         os.chdir('assets')
         self.imp = pg.image.load("circle.png").convert_alpha()
-        self.rect = self.imp.get_rect(topleft = (x, y))
+        self.rect = self.imp.get_rect(center = (x, y))
         os.chdir('..')
         objects.append(self)
     
@@ -197,7 +200,8 @@ class Oval3D:
         (-self.angle)
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
         posy = HALF_HEIGHT+self.y-hy
-        self.rect = self.imp.get_rect(topleft = (posx, posy))
+        imp = pg.transform.scale(self.imp, (sx, sy))
+        self.rect = imp.get_rect(center = (posx, posy))
         print(sx)
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
 
@@ -220,7 +224,6 @@ class Text3D:
         text = font.render(self.text, True, self.white)
         textRect = text.get_rect()
         if s >= 20 and s <= 500: window.blit(text, (posx, posy))
-        if s >= 495 and s <= 505: sys.quit()
 
 class Sound3D:
     def __init__(self, file, volume=100, x=0, y=0) -> None:
