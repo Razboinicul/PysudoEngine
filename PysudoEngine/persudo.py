@@ -3,8 +3,11 @@ import pygame_gui as pgui
 import numpy as np
 from tempfile import gettempdir
 from platform import system
+import shutil
+from zipfile import ZipFile
 from numba import njit, prange
 import sys, os
+pg.font.init()
 objects = []
 pos = [0, 0]
 angle = 0
@@ -19,6 +22,15 @@ elif system() == 'Linux': tmpdir = gettempdir() + '/.getemp'
 else: tmpdir = gettempdir() + '/.getemp'
 camera_modes = {"static":0, "FPS":1, "Rotation-only":2}
 
+def read_zipfile():
+    if not os.path.exists(tmpdir): os.mkdir(tmpdir)
+    if os.path.exists(tmpdir):
+      shutil.rmtree(tmpdir)
+      os.mkdir(tmpdir)
+    with ZipFile('pack.enres', 'r') as pack:
+        pack.extractall(path=tmpdir)
+    os.chdir(tmpdir+'/assets')
+
 class Mode7:
     def __init__(self, app, f_tex, c_tex, cmode=1, weapon_col="rect.png", borders=None):
         self.app, self.cmode, self.borders, self.shooting, self.ammo = app, cmode, borders, False, 150
@@ -29,15 +41,16 @@ class Mode7:
         self.ceil_tex = pg.transform.scale(self.ceil_tex, self.tex_size)
         self.ceil_array = pg.surfarray.array3d(self.ceil_tex)
         self.screen_array = pg.surfarray.array3d(pg.Surface(WIN_RES))
+        self.bar = PersudoRect2D(0, 830, 1920, 150)
         if (self.cmode == 1) or (self.cmode == 2):
             self.w1 = pg.image.load("weapon-1.png").convert_alpha()
             self.w2 = pg.image.load("weapon-2.png").convert_alpha()
             self.imp = pg.image.load(weapon_col).convert_alpha()
             self.rect = self.imp.get_rect(topleft = (HALF_WIDTH, HALF_HEIGHT))
-        os.chdir("..")
+        #os.chdir("..")
         self.alt = 10000.0
         self.angle = 0.0
-        self.pos = np.array([0.0, 0.0])
+        self.pos = np.array([0.0, 0.0, 1.0])
 
     def update(self):
         global pos, angle
@@ -52,10 +65,19 @@ class Mode7:
         if (self.cmode == 1) or (self.cmode == 2):
             posx = HALF_WIDTH
             posy = HALF_HEIGHT
+            WHITE = (255, 255, 255)
+            RED = (255, 0, 0)
             self.app.screen.blit(pg.transform.scale(self.imp, (16, 16)), (posx, posy))
-            if self.shooting: self.app.screen.blit(self.w2, (HALF_WIDTH, HEIGHT-300))
-            else: self.app.screen.blit(self.w1, (HALF_WIDTH, HEIGHT-300))
-            #self.ammo = pgui.UITextBox(html_text=f'Ammo: {self.ammo}',relative_rect=pg.Rect(100, 100, 200, 50), manager=self.app.manager)
+            if self.shooting: self.app.screen.blit(self.w2, (HALF_WIDTH, HEIGHT-320))
+            else: self.app.screen.blit(self.w1, (HALF_WIDTH, HEIGHT-320))
+            if self.ammo > 0:
+                font = pg.font.SysFont('serif', 45)
+                text = font.render(f'Ammo: {self.ammo}', True, WHITE)
+                self.app.screen.blit(text, (100, 850))
+            else:
+                font = pg.font.SysFont('serif', 45)
+                text = font.render(f'Ammo: {self.ammo}', True, RED)
+                self.app.screen.blit(text, (100, 850))
                 
 
     @staticmethod
@@ -81,6 +103,7 @@ class Mode7:
                 #depth = 4 * abs(z) / HALF_HEIGHT
                 depth = min(max(2.5 * (abs(z) / HALF_HEIGHT), 0), 1)
                 fog = (1 - depth) * 230
+                #fog = 350
                 floor_col = (floor_col[0] * depth + fog,
                              floor_col[1] * depth + fog,
                              floor_col[2] * depth + fog)
@@ -89,7 +112,7 @@ class Mode7:
                             ceil_col[2] * depth + fog)
                 screen_array[i, j] = floor_col
                 screen_array[i, -j] = ceil_col
-                new_alt += alt
+                new_alt += alt/player_pos[2]
         return screen_array
 
     def movement(self):
@@ -134,10 +157,10 @@ class Mode7:
             if keys[pg.K_RIGHT]:
                 self.angle += SPEED/2
 
-            #if keys[pg.K_q]:
-                #self.alt += SPEED
-            #if keys[pg.K_e]:
-                #self.alt -= SPEED
+            if keys[pg.K_q]:
+                self.pos[2] += SPEED
+            if keys[pg.K_e]:
+                self.pos[2] -= SPEED
         self.alt = min(max(self.alt, 0.3), 4.0)
 
 class Sprite3D:
@@ -158,7 +181,7 @@ class Sprite3D:
         hy = sy/2
         (-self.angle)
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
-        posy = HALF_HEIGHT+self.y-hy
+        posy = HALF_HEIGHT+self.y-pos[2]
         imp = pg.transform.scale(self.imp, (sx, sy))
         self.rect = imp.get_rect(topleft = (posx, posy))
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
@@ -168,11 +191,9 @@ class Rect3D:
         global objects
         self.x, self.y, self.w, self.h, self.angle = x, y, w, h, angle
         self.RED = (255, 0, 0)
-        os.chdir('assets')
         self.imp = pg.image.load("rect.png").convert()
         self.rect = self.imp.get_rect(topleft = (x, y))
         self.type = Rect3D
-        os.chdir('..')
         objects.append(self)
     
     def draw(self, window, pos, angle):
@@ -184,22 +205,20 @@ class Rect3D:
         hy = sy/2
         (-self.angle)
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
-        posy = HALF_HEIGHT+self.y-hy
+        posy = HALF_HEIGHT+self.y-(pos[2]*20)
         imp = pg.transform.scale(self.imp, (sx, sy))
         self.rect = imp.get_rect(topleft = (posx, posy))
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
         if pos[1] == posx: print("colliding")
-    
+
 class Oval3D:
     def __init__(self, x=0, y=0, w=10, h=10, angle=0) -> None:
         global objects
         self.x, self.y, self.w, self.h, self.angle = x, y, w, h, angle
         self.RED = (255, 0, 0)
         self.type = Oval3D
-        os.chdir('assets')
         self.imp = pg.image.load("circle.png").convert_alpha()
         self.rect = self.imp.get_rect(topleft = (x, y))
-        os.chdir('..')
         objects.append(self)
     
     def draw(self, window, pos, angle):
@@ -211,7 +230,7 @@ class Oval3D:
         hy = sy/2
         (-self.angle)
         posx = HALF_WIDTH+self.x-hx-(pos[1]*300)-(angle*1000)
-        posy = HALF_HEIGHT+self.y-hy
+        posy = HALF_HEIGHT+self.y-(pos[2]*20)
         imp = pg.transform.scale(self.imp, (sx, sy))
         self.rect = imp.get_rect(topleft = (posx, posy))
         if sx >= 20 and sx <= 500: window.blit(pg.transform.scale(self.imp, (sx, sy)), (posx, posy))
@@ -219,7 +238,6 @@ class Oval3D:
 class Text3D:
     def __init__(self, x=0, y=0, text="", size=1000, t_color=(0, 0, 0), f_color=(256, 256, 256)) -> None:
         global objects
-        pg.font.init()
         self.x, self.y, self.text, self.size, self.t_color, self.f_color = x, y, text, size, t_color, f_color
         self.type = Text3D
         self.white=(255, 255, 255)
@@ -240,10 +258,8 @@ class Sound3D:
     def __init__(self, file, volume=100, x=0, y=0) -> None:
         global objects
         self.file, self.volume, self.x, self.y = file, volume, x, y
-        os.chdir('assets')
         self.sound = pg.mixer.Sound(self.file)
         self.type = Sound3D
-        os.chdir('..')
         self.sound.set_volume(volume/100)
         objects.append(self)
         self.music_channel = pg.mixer.Channel(0)
@@ -258,11 +274,32 @@ class Sound3D:
     
     def play(self): self.sound.play()
 
+class PersudoText2D:
+    def __init__(self, x=0, y=0, color=(256, 256, 256), text="") -> None:
+        self.color, self.x, self.y, self.text = color, x, y, text
+    
+    def draw(self, w, _pos, _angle):
+        font = pg.font.SysFont('Sans Serif', 30)
+        text = font.render(self.text, True, self.color)
+        w.blit(text, (self.x, self.y))
+
+class PersudoRect2D:
+    def __init__(self, x=0, y=0, w=10, h=10, angle=0) -> None:
+        global objects
+        self.x, self.y, self.w, self.h, self.angle = x, y, w, h, angle
+        self.RED = (255, 0, 0)
+        self.imp = pg.image.load("rect.png").convert()
+        self.rect = self.imp.get_rect(topleft = (x, y))
+        self.type = Rect3D
+        objects.append(self)
+    
+    def draw(self, window, _pos, _angle):
+        window.blit(pg.transform.scale(self.imp, (self.w, self.h)), (self.x, self.y))
+
 class PersudoWindow:
     def __init__(self, floor_tex, c_tex, cmode, borders=None):
-        os.chdir(tmpdir+'/assets')
+        read_zipfile()
         self.screen = pg.display.set_mode(WIN_RES)
-        #self.manager = pgui.UIManager(WIN_RES)
         self.clock = pg.time.Clock()
         self.mode7 = Mode7(self, floor_tex, c_tex, cmode=cmode, borders=borders)
 
@@ -297,7 +334,7 @@ if __name__ == '__main__':
     app = PersudoWindow('floor_1.png', 'ceil_2.png', camera_modes['FPS'])
     #s = Sprite('textures/Sprite.png', 0, 0, 10)
     #sound = Sound3D("sound.wav")
-    r = Rect3D(10, 10, 15, 15, 25)
-    c = Oval3D(150, 15, 10, 25, 60)
+    r = Rect3D(10, 10, 25, 35, 25)
+    c = Oval3D(150, 15, 25, 45, 60)
     #wsound.play()
     app.gameloop()
