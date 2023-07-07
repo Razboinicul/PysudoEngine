@@ -47,8 +47,9 @@ if len(settings.keys()) == 0:
     settings['tabsize'] = 4
     settings['filename'] = None
     settings['body'] = ''
-    settings['info'] = '> New File <'
+    settings['info'] = 'main.lua'
     settings['out'] = ''
+settings['filename'] = vars.p_path+"/main.lua"
 
 # default theme or user saved theme
 sg.change_look_and_feel(settings['theme'])
@@ -59,7 +60,7 @@ settings.update(out = outstring.format(settings['theme'], settings['tabsize'], s
 
 def close_settings():
     ''' Close the the shelve file upon exit '''
-    settings.update(filename=None, body='', out='', info='> New File <')
+    settings.update(filename=None, body='', out='', info='main.lua')
     if save_user_settings:
         settings.close()
 
@@ -70,7 +71,8 @@ def main_window(settings):
     ''' Create the main window; also called when the application theme is changed '''
     elem_width= 80 # adjust default width
     menu_layout = [
-        ['File',['New','Open','Save','Save As','---','Exit']],
+        #['File',['New','Open','Save','Save As','---','Exit']],
+        ['File',['Save', '---','Exit']],
         ['Edit',['Undo','---','Cut','Copy','Paste','Delete','---','Find...','Replace...','---','Select All','Date/Time']],
         ['Format',['Theme', settings['themes'],'Font','Tab Size','Show Settings']],
         ['Help',['View Help','---','About Me']]]
@@ -84,6 +86,8 @@ def main_window(settings):
         [sg.Pane([col1])]]
 
     window = sg.Window('Text-Code Editor', window_layout, resizable=True, margins=(0,0), return_keyboard_events=True)
+    window.read()
+    fopen(window)
     return window
 
 
@@ -99,6 +103,19 @@ def open_file(window): # CTRL+O shortcut key
     ''' Open a local file in the editor '''
     try: # 'OUT OF INDEX' error in trinket if 'CANCEL' button is pressed
         filename = sg.popup_get_file('File Name:', title='Open', no_window=True)
+    except:
+        return
+    if filename not in (None,''):
+        with open(filename,'r') as f:
+            file_text = f.read()
+        window['_BODY_'].update(value=file_text)
+        window['_INFO_'].update(value=filename.replace('/',' > '))
+        settings.update(filename=filename, body=file_text, info=filename.replace('/',' > '))
+
+def fopen(window):
+    ''' Open a local file in the editor '''
+    try: # 'OUT OF INDEX' error in trinket if 'CANCEL' button is pressed
+        filename = vars.p_path+"/main.lua"
     except:
         return
     if filename not in (None,''):
@@ -340,4 +357,5 @@ def text_editor():
         window.close()
         vars.win = vars.main
     except:
+        print("Redirecting from exception")
         vars.win = vars.main

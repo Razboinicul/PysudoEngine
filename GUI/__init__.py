@@ -1,5 +1,5 @@
 import PySimpleGUI as sg
-import sys
+import sys, os
 from text import *
 import vars
 vars.win = lambda: start()
@@ -32,6 +32,9 @@ def new_project():
         if event == "Create":
             vars.p_name = values["P_NAME"]
             vars.p_path = values["P_PATH"]
+            #os.chdir(vars.p_path)
+            f = open(vars.p_path+"/main.lua", "w+")
+            f.close()
             vars.win = lambda: main_win()
             break
     window.close()
