@@ -1,10 +1,11 @@
 import PySimpleGUI as sg
 import sys
-win = lambda: start()
-p_name, p_path = "", ""
+from text import *
+import vars
+vars.win = lambda: start()
+vars.main = lambda: main_win()
 
 def start():
-    global win
     layout = [[sg.Button(button_text="New Project", key="NP")],
               [sg.Button(button_text="Load Project", key="LP")]]
     window = sg.Window("Pysudo Engine", layout)
@@ -12,15 +13,14 @@ def start():
         event, values = window.read()
         if event == sg.WINDOW_CLOSED: sys.exit()
         if event == "NP": 
-            win = lambda: new_project()
+            vars.win = lambda: new_project()
             break
         if event == "LP": 
-            win = lambda: load_project()
+            vars.win = lambda: load_project()
             break
     window.close()
 
 def new_project():
-    global win, p_name, p_path
     layout = [[sg.Text("Project Name:"), sg.Input(key='P_NAME')],
             [sg.Text("Project Path:"), sg.Input(key='P_PATH', change_submits=True), sg.FolderBrowse(key="P_BROWSE")],
             [sg.Button('Create'), sg.Button('Quit')]]
@@ -30,14 +30,13 @@ def new_project():
         if event == sg.WINDOW_CLOSED or event == 'Quit':
             sys.exit()
         if event == "Create":
-            p_name = values["P_NAME"]
-            p_path = values["P_PATH"]
-            win = lambda: main()
+            vars.p_name = values["P_NAME"]
+            vars.p_path = values["P_PATH"]
+            vars.win = lambda: main_win()
             break
     window.close()
 
 def load_project():
-    global win, p_name, p_path
     layout = [[sg.Text("Project Path:"), sg.Input(key='P_PATH'), sg.FolderBrowse(key="P_BROWSE")],
             [sg.Button('Load')]]
     window = sg.Window('Load Project', layout)
@@ -46,9 +45,9 @@ def load_project():
         if event == sg.WINDOW_CLOSED or event == 'Quit':
             sys.exit()
         if event == "Load":
-            p_name = ""
-            p_path = values["P_PATH"]
-            win = lambda: main()
+            vars.p_name = ""
+            vars.p_path = values["P_PATH"]
+            vars.win = lambda: main_win()
             break
     window.close()
 
@@ -61,18 +60,22 @@ def test():
             sys.exit()
     window.close()
 
-def main():
-    global p_name
+def main_win():
+    vars.win = lambda: main_win()
     layout = [[sg.Button('Sprites', key="SP")],
+              [sg.Button("Code Editor", key="CE")],
               [sg.Button('Quit')]]
-    window = sg.Window(p_name, layout)
-    print(p_name, p_path)
+    window = sg.Window(vars.p_name, layout)
+    print(vars.p_name, vars.p_path)
     while True:
         event, values = window.read()
+        if event == "CE": 
+            vars.win = lambda: text_editor()
+            break
         if event == sg.WINDOW_CLOSED or event == 'Quit':
             sys.exit()
     window.close()
 
 if __name__ == "__main__":
     while True:
-        win()
+        vars.win()
