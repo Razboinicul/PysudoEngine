@@ -2,9 +2,16 @@ import PySimpleGUI as sg
 import sys, os
 from text import *
 from pys import *
+from lua_interpreter import interpret_code
 import vars
 vars.win = lambda: start()
 vars.main = lambda: main_win()
+lua_init = """function _ready ()
+    print("Ready")
+end
+function _process ()
+    print("Process")
+end"""
 
 def start():
     layout = [[sg.Button(button_text="New Project", key="NP")],
@@ -35,6 +42,7 @@ def new_project():
             vars.p_path = values["P_PATH"]
             write_pys_file()
             f = open(vars.p_path+"/main.lua", "w+")
+            f.writelines(lua_init)
             f.close()
             vars.win = lambda: main_win()
             break
@@ -68,6 +76,7 @@ def main_win():
     vars.win = lambda: main_win()
     layout = [[sg.Button('Sprites', key="SP")],
               [sg.Button("Code Editor", key="CE")],
+              [sg.Button("Run Game", key="Run")],
               [sg.Button('Quit')]]
     window = sg.Window(vars.p_name, layout)
     print(vars.p_name, vars.p_path)
@@ -76,6 +85,8 @@ def main_win():
         if event == "CE": 
             vars.win = lambda: text_editor()
             break
+        if event == "Run":
+            interpret_code(vars.p_path+"/main.lua")
         if event == sg.WINDOW_CLOSED or event == 'Quit':
             sys.exit()
     window.close()
