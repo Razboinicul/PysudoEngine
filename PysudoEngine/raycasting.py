@@ -2,10 +2,16 @@ import pygame as pg
 import numpy as np
 from numba import njit
 from compressing import *
+import sys
+read_zip = False
 
 class Scene:
-    def __init__(self, sky_path, floor_path, wall_path, map_path=None, test_exitx=None, test_exity=None, enemies=True):
-        read_zipfile()
+    def __init__(self, sky_path, floor_path, wall_path, size=5, map_path=None, test_exitx=None, test_exity=None, playerx=None, playery=None, enemies=True):
+        global read_zip
+        self.next = False
+        if not read_zip:
+            read_zipfile()
+            read_zip = True
         pg.init()
         screen = pg.display.set_mode((800,600))
         running = True
@@ -18,15 +24,17 @@ class Scene:
         halfvres = int(hres*0.375) #vertical resolution/2
         mod = hres/60 #scaling factor (60° fov)
 
-        size = 6
+        self.size = size
         if enemies: nenemies = int(size*2) #number of enemies
-        else: nenemies = 1
+        else: nenemies = 0
         if map_path != None:
             posx, posy, rot, maph, mapc, exitx, exity = self.grab_map(map_path, size)
         else:
             posx, posy, rot, maph, mapc, exitx, exity = self.gen_map(size)
         if test_exitx != None: exitx = test_exitx
         if test_exity != None: exity = test_exity
+        if playerx != None: posx = playerx
+        if playery != None: posy = playery
         frame = np.random.uniform(0,1, (hres, halfvres*2, 3))
         #sky = pg.image.load('ceil_4.png')
         sky = pg.image.load(sky_path)
@@ -45,7 +53,7 @@ class Scene:
             er = min(clock.tick()/500, 0.3)
             if int(posx) == exitx and int(posy) == exity:
                 if nenemies < size:
-                    print("You got out of the maze!")
+                    print("You got out of the room!")
                     pg.time.wait(1000)
                     running = False
                 elif int(ticks%10+0.9) == 0:
@@ -53,6 +61,8 @@ class Scene:
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     running = False
+                    pg.quit()
+                    sys.exit()
                 if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                     mv = not mv
                     pg.event.set_grab(not mv)
@@ -63,9 +73,9 @@ class Scene:
                             wall, mapc, exitx, exity)
             surf = pg.surfarray.make_surface(frame*255)
             
-            enemies = sort_sprites(posx, posy, rot, enemies, maph, size, er/5)
+            if len(enemies) != 0:
+                enemies = sort_sprites(posx, posy, rot, enemies, maph, size, er/5)
             surf, en = draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, swordsp)
-
             surf = pg.transform.scale(surf, (800, 600))
             
             if int(swordsp) > 0:
@@ -81,6 +91,8 @@ class Scene:
             posx, posy, rot = self.movement(pg.key.get_pressed(), posx, posy, rot, maph, er)
         else:
             print("Exited Sucessfully")
+    
+    def get_next(self): return self.next
     
     def movement(self, pressed_keys, posx, posy, rot, maph, et):
         x, y, rot0, diag = posx, posy, rot, 0
@@ -185,6 +197,7 @@ def spawn_enemies(number, maph, msize):
         size = np.random.uniform(7, 10)
         enemies.append([x, y, angle2p, invdist2p, entype, size, direction, dir2p])
 
+    print(len(enemies))
     return np.asarray(enemies)
 
 def get_sprites(hres):
@@ -213,8 +226,12 @@ def get_sprites(hres):
 def draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, swordsp):
     #enemies : x, y, angle2p, dist2p, type, size, direction, dir2p
     cycle = int(ticks)%3 # animation cycle for monsters
+    if len(enemies) == 0: en0 = 0
     for en in range(len(enemies)):
-        if enemies[en][3] >  10:
+        if len(enemies) == 0: 
+            en0 = en
+            return surf, en0-1
+        if enemies[en][3] > 10:
             break
         types, dir2p = int(enemies[en][4]), int(enemies[en][7])
         cos2 = np.cos(enemies[en][2])
@@ -226,7 +243,9 @@ def draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, s
 
     swordpos = (np.sin(ticks)*10*hres/800,(np.cos(ticks)*10+15)*hres/800) # sword shake
     surf.blit(sword[int(swordsp)], swordpos)
-
+    if len(enemies) == 0: 
+        en0 = 0
+        en = en0
     return surf, en-1
 
 @njit()
@@ -290,41 +309,42 @@ def new_frame(posx, posy, rot, frame, sky, floor, hres, halfvres, mod, maph, siz
 
 @njit()
 def sort_sprites(posx, posy, rot, enemies, maph, size, er):
-    for en in range(len(enemies)):
-        cos, sin = er*np.cos(enemies[en][6]), er*np.sin(enemies[en][6])
-        enx, eny = enemies[en][0]+cos, enemies[en][1]+sin
-        if (maph[int(enx-0.1)%(size-1)][int(eny-0.1)%(size-1)] or
-            maph[int(enx-0.1)%(size-1)][int(eny+0.1)%(size-1)] or
-            maph[int(enx+0.1)%(size-1)][int(eny-0.1)%(size-1)] or
-            maph[int(enx+0.1)%(size-1)][int(eny+0.1)%(size-1)]):
-            enx, eny = enemies[en][0], enemies[en][1]
-            enemies[en][6] = enemies[en][6] + np.random.uniform(-0.5, 0.5)
-        else:
-            enemies[en][0], enemies[en][1] = enx, eny
-        angle = np.arctan((eny-posy)/(enx-posx))
-        if abs(posx+np.cos(angle)-enx) > abs(posx-enx):
-            angle = (angle - np.pi)%(2*np.pi)
-        angle2= (rot-angle)%(2*np.pi)
-        if angle2 > 10.5*np.pi/6 or angle2 < 1.5*np.pi/6:
-            dir2p = ((enemies[en][6] - angle -3*np.pi/4)%(2*np.pi))/(np.pi/2)
-            enemies[en][2] = angle2
-            enemies[en][7] = dir2p
-            enemies[en][3] = 1/np.sqrt((enx-posx)**2+(eny-posy)**2+1e-16)
-            cos, sin = (posx-enx)*enemies[en][3], (posy-eny)*enemies[en][3]
-            x, y = enx, eny
-            for i in range(int((1/enemies[en][3])/0.05)):
-                x, y = x +0.05*cos, y +0.05*sin
-                if (maph[int(x-0.02*cos)%(size-1)][int(y)%(size-1)] or
-                    maph[int(x)%(size-1)][int(y-0.02*sin)%(size-1)]):
-                    enemies[en][3] = 9999
-                    break
-        else:
-           enemies[en][3] = 9999
+    if len(enemies) != 0:
+        for en in range(len(enemies)):
+            cos, sin = er*np.cos(enemies[en][6]), er*np.sin(enemies[en][6])
+            enx, eny = enemies[en][0]+cos, enemies[en][1]+sin
+            if (maph[int(enx-0.1)%(size-1)][int(eny-0.1)%(size-1)] or
+                maph[int(enx-0.1)%(size-1)][int(eny+0.1)%(size-1)] or
+                maph[int(enx+0.1)%(size-1)][int(eny-0.1)%(size-1)] or
+                maph[int(enx+0.1)%(size-1)][int(eny+0.1)%(size-1)]):
+                enx, eny = enemies[en][0], enemies[en][1]
+                enemies[en][6] = enemies[en][6] + np.random.uniform(-0.5, 0.5)
+            else:
+                enemies[en][0], enemies[en][1] = enx, eny
+            angle = np.arctan((eny-posy)/(enx-posx))
+            if abs(posx+np.cos(angle)-enx) > abs(posx-enx):
+                angle = (angle - np.pi)%(2*np.pi)
+            angle2= (rot-angle)%(2*np.pi)
+            if angle2 > 10.5*np.pi/6 or angle2 < 1.5*np.pi/6:
+                dir2p = ((enemies[en][6] - angle -3*np.pi/4)%(2*np.pi))/(np.pi/2)
+                enemies[en][2] = angle2
+                enemies[en][7] = dir2p
+                enemies[en][3] = 1/np.sqrt((enx-posx)**2+(eny-posy)**2+1e-16)
+                cos, sin = (posx-enx)*enemies[en][3], (posy-eny)*enemies[en][3]
+                x, y = enx, eny
+                for i in range(int((1/enemies[en][3])/0.05)):
+                    x, y = x +0.05*cos, y +0.05*sin
+                    if (maph[int(x-0.02*cos)%(size-1)][int(y)%(size-1)] or
+                        maph[int(x)%(size-1)][int(y-0.02*sin)%(size-1)]):
+                        enemies[en][3] = 9999
+                        break
+            else:
+                enemies[en][3] = 9999
 
     enemies = enemies[enemies[:, 3].argsort()]
     return enemies
 
 if __name__ == '__main__':
     write_zipfile()
-    scn = Scene('ceil_4.png', 'floor_1.png', 'floor_0.png', "level0.map", 4, 3, False)
-    pg.quit()
+    scn0 = Scene('ceil_4.png', 'floor_1.png', 'floor_0.png', 6, "level0.map", 4, 3, 2, 3.5, True)
+    scn1 = Scene('ceil_4.png', 'floor_1.png', 'floor_0.png', 6, "level0.map", 4, 3, 2, 3.5, False)
