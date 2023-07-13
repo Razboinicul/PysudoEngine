@@ -32,7 +32,7 @@ def read_zipfile():
       os.mkdir(tmpdir)
     with ZipFile('pack.enres', 'r') as pack:
         pack.extractall(path=tmpdir)
-    os.chdir(tmpdir)
+    os.chdir(tmpdir+"/assets")
 
 def build(gamepath):
     os.chdir(cwd)

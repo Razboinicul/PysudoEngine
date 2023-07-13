@@ -1,9 +1,11 @@
 import pygame as pg
 import numpy as np
 from numba import njit
+from compressing import *
 
 class Scene:
-    def __init__(self):
+    def __init__(self, sky_path, floor_path, wall_path, map_path=None, test_exitx=None, test_exity=None, enemies=True):
+        read_zipfile()
         pg.init()
         screen = pg.display.set_mode((800,600))
         running = True
@@ -16,19 +18,27 @@ class Scene:
         halfvres = int(hres*0.375) #vertical resolution/2
         mod = hres/60 #scaling factor (60° fov)
 
-        size = 25
-        nenemies = size*2 #number of enemies
-        posx, posy, rot, maph, mapc, exitx, exity = self.grab_map("assets/level0.map", size)
-        
+        size = 6
+        if enemies: nenemies = int(size*2) #number of enemies
+        else: nenemies = 1
+        if map_path != None:
+            posx, posy, rot, maph, mapc, exitx, exity = self.grab_map(map_path, size)
+        else:
+            posx, posy, rot, maph, mapc, exitx, exity = self.gen_map(size)
+        if test_exitx != None: exitx = test_exitx
+        if test_exity != None: exity = test_exity
         frame = np.random.uniform(0,1, (hres, halfvres*2, 3))
-        sky = pg.image.load('assets/ceil_4.png')
+        #sky = pg.image.load('ceil_4.png')
+        sky = pg.image.load(sky_path)
         sky = pg.surfarray.array3d(pg.transform.smoothscale(sky, (720, halfvres*2)))/255
-        floor = pg.surfarray.array3d(pg.image.load('assets/floor_1.png'))/255
-        wall = pg.surfarray.array3d(pg.image.load('assets/floor_0.png'))/255
+        #floor = pg.surfarray.array3d(pg.image.load('floor_1.png'))/255
+        #wall = pg.surfarray.array3d(pg.image.load('floor_0.png'))/255
+        floor = pg.surfarray.array3d(pg.image.load(floor_path))/255
+        wall = pg.surfarray.array3d(pg.image.load(wall_path))/255
         sprites, spsize, sword, swordsp = get_sprites(hres)
         
         enemies = spawn_enemies(nenemies, maph, size)
-        #grab_map("assets/level0.map")
+        #grab_map("level0.map")
         while running:
             pg.mouse.set_visible(mv)
             ticks = pg.time.get_ticks()/200
@@ -46,7 +56,7 @@ class Scene:
                 if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                     mv = not mv
                     pg.event.set_grab(not mv)
-                if swordsp < 1 and event.type == pg.MOUSEBUTTONDOWN:
+                if swordsp != 1 and event.type == pg.MOUSEBUTTONDOWN:
                     swordsp = 1
                     
             frame = new_frame(posx, posy, rot, frame, sky, floor, hres, halfvres, mod, maph, size,
@@ -69,6 +79,8 @@ class Scene:
             fps = int(clock.get_fps())
             pg.display.set_caption("Enemies remaining: " + str(nenemies) + " - FPS: " + str(fps))
             posx, posy, rot = self.movement(pg.key.get_pressed(), posx, posy, rot, maph, er)
+        else:
+            print("Exited Sucessfully")
     
     def movement(self, pressed_keys, posx, posy, rot, maph, et):
         x, y, rot0, diag = posx, posy, rot, 0
@@ -176,9 +188,9 @@ def spawn_enemies(number, maph, msize):
     return np.asarray(enemies)
 
 def get_sprites(hres):
-    sheet = pg.image.load('assets/zombie_n_skeleton4.png').convert_alpha()
+    sheet = pg.image.load('zombie_n_skeleton4.png').convert_alpha()
     sprites = [[], []]
-    swordsheet = pg.image.load('assets/sword1.png').convert_alpha() 
+    swordsheet = pg.image.load('sword1.png').convert_alpha() 
     sword = []
     for i in range(3):
         subsword = pg.Surface.subsurface(swordsheet,(i*800,0,800,600))
@@ -313,5 +325,6 @@ def sort_sprites(posx, posy, rot, enemies, maph, size, er):
     return enemies
 
 if __name__ == '__main__':
-    scn = Scene()
+    write_zipfile()
+    scn = Scene('ceil_4.png', 'floor_1.png', 'floor_0.png', "level0.map", 4, 3, False)
     pg.quit()
