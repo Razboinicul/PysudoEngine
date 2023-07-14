@@ -6,97 +6,101 @@ import sys
 read_zip = False
 
 class Scene:
-    def __init__(self, sky_path, floor_path, wall_path, size=5, map_path=None, test_exitx=None, test_exity=None, playerx=None, playery=None, enemies=True):
+    def __init__(self, sky_path, floor_path, wall_path, size=5, map_path=None, test_exitx=None, test_exity=None, playerx=None, playery=None, _enemies=True, caption=""):
         global read_zip
         self.next = False
         if not read_zip:
             read_zipfile()
             read_zip = True
         pg.init()
-        screen = pg.display.set_mode((800,600))
-        running = True
-        clock = pg.time.Clock()
+        self.caption = caption
+        self.screen = pg.display.set_mode((800,600))
+        self.running = True
+        self.clock = pg.time.Clock()
         pg.mouse.set_visible(False)
-        mv = False
-        pg.event.set_grab(not mv)
+        self.mv = False
+        pg.event.set_grab(not self.mv)
 
-        hres = 250 #horizontal resolution
-        halfvres = int(hres*0.375) #vertical resolution/2
-        mod = hres/60 #scaling factor (60° fov)
+        self.hres = 250 #horizontal resolution
+        self.halfvres = int(self.hres*0.375) #vertical resolution/2
+        self.mod = self.hres/60 #scaling factor (60° fov)
 
         self.size = size
-        if enemies: nenemies = int(size*2) #number of enemies
-        else: nenemies = 0
+        self._enemies = _enemies
+        if _enemies: self.nenemies = int(size*2) #number of enemies
+        else: self.nenemies = 0 
         if map_path != None:
-            posx, posy, rot, maph, mapc, exitx, exity = self.grab_map(map_path, size)
+            self.posx, self.posy, self.rot, self.maph, self.mapc, self.exitx, self.exity = self.grab_map(map_path, size)
         else:
-            posx, posy, rot, maph, mapc, exitx, exity = self.gen_map(size)
-        if test_exitx != None: exitx = test_exitx
-        if test_exity != None: exity = test_exity
-        if playerx != None: posx = playerx
-        if playery != None: posy = playery
-        frame = np.random.uniform(0,1, (hres, halfvres*2, 3))
+            self.posx, self.posy, self.rot, self.maph, self.mapc, self.exitx, self.exity = self.gen_map(self.size)
+        if test_exitx != None: self.exitx = test_exitx
+        if test_exity != None: self.exity = test_exity
+        if playerx != None: self.posx = playerx
+        if playery != None: self.posy = playery
+        self.frame = np.random.uniform(0,1, (self.hres, self.halfvres*2, 3))
         #sky = pg.image.load('ceil_4.png')
-        sky = pg.image.load(sky_path)
-        sky = pg.surfarray.array3d(pg.transform.smoothscale(sky, (720, halfvres*2)))/255
+        self.sky = pg.image.load(sky_path)
+        self.sky = pg.surfarray.array3d(pg.transform.smoothscale(self.sky, (720, self.halfvres*2)))/255
         #floor = pg.surfarray.array3d(pg.image.load('floor_1.png'))/255
         #wall = pg.surfarray.array3d(pg.image.load('floor_0.png'))/255
-        floor = pg.surfarray.array3d(pg.image.load(floor_path))/255
-        wall = pg.surfarray.array3d(pg.image.load(wall_path))/255
-        sprites, spsize, sword, swordsp = get_sprites(hres)
+        self.floor = pg.surfarray.array3d(pg.image.load(floor_path))/255
+        self.wall = pg.surfarray.array3d(pg.image.load(wall_path))/255
+        self.sprites, self.spsize, self.sword, self.swordsp = get_sprites(self.hres)
         
-        enemies = spawn_enemies(nenemies, maph, size)
+        self.enemies = spawn_enemies(self.nenemies, self.maph, self.size)
         #grab_map("level0.map")
-        while running:
-            pg.mouse.set_visible(mv)
-            ticks = pg.time.get_ticks()/200
-            er = min(clock.tick()/500, 0.3)
-            if int(posx) == exitx and int(posy) == exity:
-                if nenemies < size:
-                    print("You got out of the room!")
-                    pg.time.wait(1000)
-                    running = False
-                elif int(ticks%10+0.9) == 0:
-                    print("There is still work to do...")
-            for event in pg.event.get():
-                if event.type == pg.QUIT:
-                    running = False
-                    pg.quit()
-                    sys.exit()
-                if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
-                    mv = not mv
-                    pg.event.set_grab(not mv)
-                if swordsp != 1 and event.type == pg.MOUSEBUTTONDOWN:
-                    swordsp = 1
-                    
-            frame = new_frame(posx, posy, rot, frame, sky, floor, hres, halfvres, mod, maph, size,
-                            wall, mapc, exitx, exity)
-            surf = pg.surfarray.make_surface(frame*255)
-            
-            if len(enemies) != 0:
-                enemies = sort_sprites(posx, posy, rot, enemies, maph, size, er/5)
-            surf, en = draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, swordsp)
-            surf = pg.transform.scale(surf, (800, 600))
-            
-            if int(swordsp) > 0:
-                if swordsp == 1 and enemies[en][3] > 1 and enemies[en][3] < 10:
-                    enemies[en][0] = 0
-                    nenemies = nenemies - 1
-                swordsp = (swordsp + er*5)%4
-
-            screen.blit(surf, (0,0))
-            pg.display.update()
-            fps = int(clock.get_fps())
-            pg.display.set_caption("Enemies remaining: " + str(nenemies) + " - FPS: " + str(fps))
-            posx, posy, rot = self.movement(pg.key.get_pressed(), posx, posy, rot, maph, er)
-        else:
-            print("Exited Sucessfully")
     
-    def get_next(self): return self.next
+    def update_frame(self):
+        pg.mouse.set_visible(self.mv)
+        ticks = pg.time.get_ticks()/200
+        er = min(self.clock.tick()/500, 0.3)
+        if int(self.posx) == self.exitx and int(self.posy) == self.exity:
+            if self.nenemies == 0:
+                print("You got out of the room!")
+                pg.time.wait(1000)
+                self.running = False
+            elif int(ticks%10+0.9) == 0:
+                print("There is still work to do...")
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                running = False
+                pg.quit()
+                sys.exit()
+            if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
+                self.mv = not self.mv
+                pg.event.set_grab(not self.mv)
+            if self.swordsp != 1 and event.type == pg.MOUSEBUTTONDOWN:
+                self.swordsp = 1
+                
+        frame = new_frame(self.posx, self.posy, self.rot, self.frame, self.sky, self.floor, self.hres, self.halfvres, self.mod, self.maph, self.size,
+                        self.wall, self.mapc, self.exitx, self.exity)
+        surf = pg.surfarray.make_surface(frame*255)
+        
+        if len(self.enemies) != 0:
+            try: self.enemies = sort_sprites(self.posx, self.posy, self.rot, self.enemies, self.maph, self.size, er/5)
+            except: pass
+        try: surf, en = draw_sprites(surf, self.sprites, self.enemies, self.spsize, self.hres, self.halfvres, ticks, self.sword, self.swordsp)
+        except: pass
+        if not self._enemies: en = -1
+        surf = pg.transform.scale(surf, (800, 600))
+        
+        if int(self.swordsp) > 0:
+            if (self.swordsp == 1 and len(self.enemies) != 0) and (self.enemies[en][3] > 1 and self.enemies[en][3] < 10):
+                self.enemies[en][0] = 0
+                self.nenemies -= 1
+                self.enemies = np.array(self.enemies.tolist().pop(en))
+                print(self.nenemies)
+            self.swordsp = (self.swordsp + er*5)%4
+
+        self.screen.blit(surf, (0,0))
+        pg.display.update()
+        fps = int(self.clock.get_fps())
+        pg.display.set_caption(self.caption + " - FPS: " + str(fps))
+        self.posx, self.posy, self.rot = self.movement(pg.key.get_pressed(), self.posx, self.posy, self.rot, self.maph, er)
     
     def movement(self, pressed_keys, posx, posy, rot, maph, et):
         x, y, rot0, diag = posx, posy, rot, 0
-        if pg.mouse.get_focused():
+        if pg.mouse.get_focused() and not self.mv:
             p_mouse = pg.mouse.get_rel()
             rot = rot + np.clip((p_mouse[0])/200, -0.2, .2)
 
@@ -181,6 +185,15 @@ class Scene:
         print(mapc)
         print(len(maph[0]))
         return posx, posy, rot, maph, mapc, exitx, exity
+    
+    def spawn_enemy(self, x, y, dir):
+        angle2p, invdist2p, dir2p = 0, 0, 0 # angle, inv dist, dir2p relative to player
+        entype = np.random.choice([0,1]) # 0 zombie, 1 skeleton
+        size = np.random.uniform(7, 10)
+        en = self.enemies.tolist()
+        en.append([x, y, angle2p, invdist2p, entype, size, dir, dir2p])
+        self.nenemies += 1
+        self.enemies = np.array(en)
 
 def spawn_enemies(number, maph, msize):
     enemies = []
@@ -227,19 +240,18 @@ def draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, s
     #enemies : x, y, angle2p, dist2p, type, size, direction, dir2p
     cycle = int(ticks)%3 # animation cycle for monsters
     if len(enemies) == 0: en0 = 0
-    for en in range(len(enemies)):
-        if len(enemies) == 0: 
-            en0 = en
-            return surf, en0-1
-        if enemies[en][3] > 10:
-            break
-        types, dir2p = int(enemies[en][4]), int(enemies[en][7])
-        cos2 = np.cos(enemies[en][2])
-        scale = min(enemies[en][3], 2)*spsize*enemies[en][5]/cos2
-        vert = halfvres + halfvres*min(enemies[en][3], 2)/cos2
-        hor = hres/2 - hres*np.sin(enemies[en][2])
-        spsurf = pg.transform.scale(sprites[types][cycle][dir2p], scale)
-        surf.blit(spsurf, (hor,vert)-scale/2)
+    if len(enemies) != 0:
+        for en in range(len(enemies)):
+            if enemies[en][3] > 10:
+                break
+            types, dir2p = int(enemies[en][4]), int(enemies[en][7])
+            cos2 = np.cos(enemies[en][2])
+            scale = min(enemies[en][3], 2)*spsize*enemies[en][5]/cos2
+            vert = halfvres + halfvres*min(enemies[en][3], 2)/cos2
+            hor = hres/2 - hres*np.sin(enemies[en][2])
+            spsurf = pg.transform.scale(sprites[types][cycle][dir2p], scale)
+            surf.blit(spsurf, (hor,vert)-scale/2)
+    else: en0 = en
 
     swordpos = (np.sin(ticks)*10*hres/800,(np.cos(ticks)*10+15)*hres/800) # sword shake
     surf.blit(sword[int(swordsp)], swordpos)
@@ -346,5 +358,17 @@ def sort_sprites(posx, posy, rot, enemies, maph, size, er):
 
 if __name__ == '__main__':
     write_zipfile()
-    scn0 = Scene('ceil_4.png', 'floor_1.png', 'floor_0.png', 6, "level0.map", 4, 3, 2, 3.5, True)
-    scn1 = Scene('ceil_4.png', 'floor_1.png', 'floor_0.png', 6, "level0.map", 4, 3, 2, 3.5, False)
+    room = 0
+    scn0 = Scene('ceil_4.png', 'floor_1.png', 'floor_0.png', 6, "level0.map", 4, 3, 2, 3.5, False, f'Room: {room}')
+    scn0.spawn_enemy(3, 4, 20)
+    while scn0.running:
+        scn0.update_frame()
+    else:
+        room += 1
+    while True:
+        scn0 = Scene('ceil_4.png', 'floor_1.png', 'floor_0.png', 6, "level0.map", 4, 3, 2, 3.5, False, f'Room: {room}')
+        #scn0.spawn_enemy(3, 4, 20)
+        while scn0.running:
+            scn0.update_frame()
+        else:
+            room += 1
