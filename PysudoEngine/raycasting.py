@@ -6,7 +6,7 @@ import sys
 read_zip = False
 
 class Scene:
-    def __init__(self, sky_path, floor_path, wall_path, size=5, map_path=None, test_exitx=None, test_exity=None, playerx=None, playery=None, _enemies=True, caption=""):
+    def __init__(self, sky_path, floor_path, wall_path, size=5, map_path=None, test_exitx=None, test_exity=None, playerx=None, playery=None, _enemies=True, caption="", show_sword=True):
         global read_zip
         self.next = False
         if not read_zip:
@@ -48,9 +48,11 @@ class Scene:
         self.sprites, self.spsize, self.sword, self.swordsp = get_sprites(self.hres)
         
         self.enemies = spawn_enemies(self.nenemies, self.maph, self.size)
+        self.sw = show_sword
         #grab_map("level0.map")
     
     def update_frame(self):
+        self.enx = [self._enemies, self.sw]
         pg.mouse.set_visible(self.mv)
         ticks = pg.time.get_ticks()/200
         er = min(self.clock.tick()/500, 0.3)
@@ -69,7 +71,7 @@ class Scene:
             if event.type == pg.KEYDOWN and event.key == pg.K_ESCAPE:
                 self.mv = not self.mv
                 pg.event.set_grab(not self.mv)
-            if self.swordsp != 1 and event.type == pg.MOUSEBUTTONDOWN:
+            if self.swordsp != 1 and event.type == pg.MOUSEBUTTONDOWN and any(self.enx):
                 self.swordsp = 1
                 
         frame = new_frame(self.posx, self.posy, self.rot, self.frame, self.sky, self.floor, self.hres, self.halfvres, self.mod, self.maph, self.size,
@@ -79,17 +81,22 @@ class Scene:
         if len(self.enemies) != 0:
             try: self.enemies = sort_sprites(self.posx, self.posy, self.rot, self.enemies, self.maph, self.size, er/5)
             except: pass
-        try: surf, en = draw_sprites(surf, self.sprites, self.enemies, self.spsize, self.hres, self.halfvres, ticks, self.sword, self.swordsp)
-        except: pass
-        if not self._enemies: en = -1
+        try: surf, en = draw_sprites(surf, self.sprites, self.enemies, self.spsize, self.hres, self.halfvres, ticks, self.sword, self.swordsp, self.enx)
+        except: 
+            en = 0
+            swordpos = (np.sin(ticks)*10*self.hres/800,(np.cos(ticks)*10+15)*self.hres/800) # sword shake
+            if self.enx[1]:
+                surf.blit(self.sword[int(self.swordsp)], swordpos)
         surf = pg.transform.scale(surf, (800, 600))
         
         if int(self.swordsp) > 0:
-            if (self.swordsp == 1 and len(self.enemies) != 0) and (self.enemies[en][3] > 1 and self.enemies[en][3] < 10):
-                self.enemies[en][0] = 0
-                self.nenemies -= 1
-                self.enemies = np.array(self.enemies.tolist().pop(en))
-                print(self.nenemies)
+            try:
+                if (len(self.enemies) != 0 and self.swordsp == 1) and (self.enemies[en][3] > 1 and self.enemies[en][3] < 10) and (self.enemies[en][0] != 0):
+                    self.enemies[en][0] = 0
+                    self.nenemies -= 1
+                    self.enemies = np.array(self.enemies.tolist().pop(en))
+                    print(self.nenemies)
+            except: pass
             self.swordsp = (self.swordsp + er*5)%4
 
         self.screen.blit(surf, (0,0))
@@ -190,10 +197,16 @@ class Scene:
         angle2p, invdist2p, dir2p = 0, 0, 0 # angle, inv dist, dir2p relative to player
         entype = np.random.choice([0,1]) # 0 zombie, 1 skeleton
         size = np.random.uniform(7, 10)
+        _self = [x, y, angle2p, invdist2p, entype, size, dir, dir2p]
         en = self.enemies.tolist()
-        en.append([x, y, angle2p, invdist2p, entype, size, dir, dir2p])
+        en.append(_self)
+        #c=0
+        for i in range(len(en)): 
+            if en[i] == _self: c = i
         self.nenemies += 1
         self.enemies = np.array(en)
+        print(c)
+        return c
 
 def spawn_enemies(number, maph, msize):
     enemies = []
@@ -236,7 +249,7 @@ def get_sprites(hres):
     
     return sprites, spsize, sword, swordsp
 
-def draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, swordsp):
+def draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, swordsp, enx):
     #enemies : x, y, angle2p, dist2p, type, size, direction, dir2p
     cycle = int(ticks)%3 # animation cycle for monsters
     if len(enemies) == 0: en0 = 0
@@ -254,7 +267,8 @@ def draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, s
     else: en0 = en
 
     swordpos = (np.sin(ticks)*10*hres/800,(np.cos(ticks)*10+15)*hres/800) # sword shake
-    surf.blit(sword[int(swordsp)], swordpos)
+    if enx[1]:
+        surf.blit(sword[int(swordsp)], swordpos)
     if len(enemies) == 0: 
         en0 = 0
         en = en0
@@ -358,16 +372,10 @@ def sort_sprites(posx, posy, rot, enemies, maph, size, er):
 
 if __name__ == '__main__':
     write_zipfile()
-    room = 0
-    scn0 = Scene('ceil_4.png', 'floor_1.png', 'floor_0.png', 6, "level0.map", 4, 3, 2, 3.5, False, f'Room: {room}')
-    scn0.spawn_enemy(3, 4, 20)
-    while scn0.running:
-        scn0.update_frame()
-    else:
-        room += 1
+    room = 1
     while True:
         scn0 = Scene('ceil_4.png', 'floor_1.png', 'floor_0.png', 6, "level0.map", 4, 3, 2, 3.5, False, f'Room: {room}')
-        #scn0.spawn_enemy(3, 4, 20)
+        scn0.spawn_enemy(3, 4, 20)
         while scn0.running:
             scn0.update_frame()
         else:
