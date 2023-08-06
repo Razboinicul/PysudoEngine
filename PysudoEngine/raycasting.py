@@ -29,6 +29,8 @@ class Scene:
         self._enemies = _enemies
         if _enemies: self.nenemies = int(size*2) #number of enemies
         else: self.nenemies = 0 
+        self.roty = 0
+        self.offset = int(0.8*self.halfvres)*2
         if map_path != None:
             self.posx, self.posy, self.rot, self.maph, self.mapc, self.exitx, self.exity = self.grab_map(map_path, size)
         else:
@@ -40,7 +42,7 @@ class Scene:
         self.frame = np.random.uniform(0,1, (self.hres, self.halfvres*2, 3))
         #sky = pg.image.load('ceil_4.png')
         self.sky = pg.image.load(sky_path)
-        self.sky = pg.surfarray.array3d(pg.transform.smoothscale(self.sky, (720, self.halfvres*2)))/255
+        self.sky = pg.surfarray.array3d(pg.transform.smoothscale(self.sky, (720, self.halfvres*2+self.offset)))/255
         #floor = pg.surfarray.array3d(pg.image.load('floor_1.png'))/255
         #wall = pg.surfarray.array3d(pg.image.load('floor_0.png'))/255
         self.floor = pg.surfarray.array3d(pg.image.load(floor_path))/255
@@ -75,13 +77,13 @@ class Scene:
                 self.swordsp = 1
                 
         frame = new_frame(self.posx, self.posy, self.rot, self.frame, self.sky, self.floor, self.hres, self.halfvres, self.mod, self.maph, self.size,
-                        self.wall, self.mapc, self.exitx, self.exity)
+                        self.wall, self.mapc, self.exitx, self.exity, self.roty, self.offset)
         surf = pg.surfarray.make_surface(frame*255)
         
         if len(self.enemies) != 0:
             try: self.enemies = sort_sprites(self.posx, self.posy, self.rot, self.enemies, self.maph, self.size, er/5)
             except: pass
-        try: surf, en = draw_sprites(surf, self.sprites, self.enemies, self.spsize, self.hres, self.halfvres, ticks, self.sword, self.swordsp, self.enx)
+        try: surf, en = draw_sprites(surf, self.sprites, self.enemies, self.spsize, self.hres, self.halfvres, ticks, self.sword, self.swordsp, self.enx, self.roty)
         except: 
             en = 0
             swordpos = (np.sin(ticks)*10*self.hres/800,(np.cos(ticks)*10+15)*self.hres/800) # sword shake
@@ -97,19 +99,22 @@ class Scene:
                     self.enemies = np.array(self.enemies.tolist().pop(en))
                     print(self.nenemies)
             except: pass
+            
             self.swordsp = (self.swordsp + er*5)%4
 
         self.screen.blit(surf, (0,0))
         pg.display.update()
         fps = int(self.clock.get_fps())
         pg.display.set_caption(self.caption + " - FPS: " + str(fps))
-        self.posx, self.posy, self.rot = self.movement(pg.key.get_pressed(), self.posx, self.posy, self.rot, self.maph, er)
+        self.posx, self.posy, self.rot, self.roty = self.movement(pg.key.get_pressed(), self.posx, self.posy, self.rot, self.maph, er, self.roty)
     
-    def movement(self, pressed_keys, posx, posy, rot, maph, et):
+    def movement(self, pressed_keys, posx, posy, rot, maph, et, roty):
         x, y, rot0, diag = posx, posy, rot, 0
         if pg.mouse.get_focused() and not self.mv:
             p_mouse = pg.mouse.get_rel()
-            rot = rot + np.clip((p_mouse[0])/200, -0.2, .2)
+            rot += np.clip((p_mouse[0])/200, -0.2, .2)
+            roty += np.clip((p_mouse[1])/200, -0.2, .2)
+            roty = np.clip(roty, -0.8, 0.8)
 
         if pressed_keys[pg.K_UP] or pressed_keys[ord('w')]:
             x, y, diag = x + et*np.cos(rot), y + et*np.sin(rot), 1
@@ -138,7 +143,7 @@ class Scene:
                 maph[int(x)][int(posy-0.2)] or maph[int(x)][int(posy+0.2)]):
             posx = x
             
-        return posx, posy, rot
+        return posx, posy, rot, roty
 
     def grab_map(self, filepath, size=25):
         maph = []
@@ -249,8 +254,9 @@ def get_sprites(hres):
     
     return sprites, spsize, sword, swordsp
 
-def draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, swordsp, enx):
+def draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, swordsp, enx, roty):
     #enemies : x, y, angle2p, dist2p, type, size, direction, dir2p
+    offset = int(roty*halfvres)
     cycle = int(ticks)%3 # animation cycle for monsters
     if len(enemies) == 0: en0 = 0
     if len(enemies) != 0:
@@ -260,7 +266,7 @@ def draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, s
             types, dir2p = int(enemies[en][4]), int(enemies[en][7])
             cos2 = np.cos(enemies[en][2])
             scale = min(enemies[en][3], 2)*spsize*enemies[en][5]/cos2
-            vert = halfvres + halfvres*min(enemies[en][3], 2)/cos2
+            vert = halfvres + halfvres*min(enemies[en][3], 2)/cos2-offset
             hor = hres/2 - hres*np.sin(enemies[en][2])
             spsurf = pg.transform.scale(sprites[types][cycle][dir2p], scale)
             surf.blit(spsurf, (hor,vert)-scale/2)
@@ -275,11 +281,13 @@ def draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, s
     return surf, en-1
 
 @njit()
-def new_frame(posx, posy, rot, frame, sky, floor, hres, halfvres, mod, maph, size, wall, mapc, exitx, exity):
+def new_frame(posx, posy, rot, frame, sky, floor, hres, halfvres, mod, maph, size, wall, mapc, exitx, exity, roty, offset):
+    offset = -int(halfvres*roty)
+    skystart = int(halfvres*0.8-offset)
     for i in range(hres):
         rot_i = rot + np.deg2rad(i/mod - 30)
         sin, cos, cos2 = np.sin(rot_i), np.cos(rot_i), np.cos(np.deg2rad(i/mod - 30))
-        frame[i][:] = sky[int(np.rad2deg(rot_i)*2%718)][:]
+        frame[i][:] = sky[int(np.rad2deg(rot_i)*2%718)][skystart:skystart+2*halfvres]
 
         x, y = posx, posy
         while maph[int(x)%(size-1)][int(y)%(size-1)] == 0:
@@ -306,19 +314,19 @@ def new_frame(posx, posy, rot, frame, sky, floor, hres, halfvres, mod, maph, siz
             
         c = shade*mapc[int(x)%(size-1)][int(y)%(size-1)]
         for k in range(h*2):
-            if halfvres - h +k >= 0 and halfvres - h +k < 2*halfvres:
+            if halfvres - h +k +offset >= 0 and halfvres - h +k +offset < 2*halfvres:
                 if ash and 1-k/(2*h) < 1-xx/99:
                     c, ash = 0.5*c, 0
-                frame[i][halfvres - h +k] = c*wall[xx][int(yy[k])]
-                if halfvres+3*h-k < halfvres*2:
-                    frame[i][halfvres+3*h-k] = c*wall[xx][int(yy[k])]
+                frame[i][halfvres - h +k+offset] = c*wall[xx][int(yy[k])]
+                if halfvres+3*h-k +offset < halfvres*2:
+                    frame[i][halfvres+3*h-k+offset] = c*wall[xx][int(yy[k])]
                 
-        for j in range(halfvres -h): #floor
-            n = (halfvres/(halfvres-j))/cos2
+        for j in range(halfvres -h -offset): #floor
+            n = (halfvres/(halfvres-j-offset))/cos2
             x, y = posx + cos*n, posy + sin*n
             xx, yy = int(x*3%1*99), int(y*3%1*99)
 
-            shade = 0.2 + 0.8*(1-j/halfvres)
+            shade = min(0.2 + 0.8/n, 1)
             if maph[int(x-0.33)%(size-1)][int(y-0.33)%(size-1)]:
                 shade = shade*0.5
             elif ((maph[int(x-0.33)%(size-1)][int(y)%(size-1)] and y%1>x%1)  or
