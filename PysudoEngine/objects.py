@@ -1,3 +1,4 @@
+# Support is depricated
 import graphics as g
 import sys
 #Vars

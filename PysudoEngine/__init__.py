@@ -1,8 +1,8 @@
 from .sound import *
 #from .legacy_persudo import *
 from .raycasting import *
-from graphics import *
-from .objects import *
+#from graphics import *
+#from .objects import *
 from .compressing import *
 
 #Loads the lua example if it's not changed

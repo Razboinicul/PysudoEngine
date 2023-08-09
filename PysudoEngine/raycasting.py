@@ -1,9 +1,28 @@
 import pygame as pg
 import numpy as np
 from numba import njit
-from compressing import *
+from zipfile import ZipFile
+import os, shutil
+from subprocess import run
+from tempfile import gettempdir
+from platform import system
 import sys
+cwd = os.getcwd()
+if system() == 'Windows': tmpdir = gettempdir() + '\\.getemp'
+elif system() == 'Linux': tmpdir = gettempdir() + '/.getemp'
+else: tmpdir = gettempdir() + '/.getemp'
+
 read_zip = False
+
+def read_zipfile():
+    if not os.path.exists(tmpdir): os.mkdir(tmpdir)
+    if os.path.exists(tmpdir):
+      shutil.rmtree(tmpdir)
+      os.mkdir(tmpdir)
+    with ZipFile('pack.enres', 'r') as pack:
+        pack.extractall(path=tmpdir)
+    if system() == "Linux": os.chdir(tmpdir+"/assets")
+    if system() == "Windows": os.chdir(tmpdir+"\\assets")
 
 class Scene:
     def __init__(self, sky_path, floor_path, wall_path, size=5, map_path=None, test_exitx=None, test_exity=None, playerx=None, playery=None, _enemies=True, caption="", show_sword=True):
