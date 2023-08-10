@@ -8,6 +8,9 @@ from tempfile import gettempdir
 from platform import system
 import sys
 cwd = os.getcwd()
+pg.display.init()
+w = pg.display.Info().current_w/2
+h = pg.display.Info().current_h/2
 if system() == 'Windows': tmpdir = gettempdir() + '\\.getemp'
 elif system() == 'Linux': tmpdir = gettempdir() + '/.getemp'
 else: tmpdir = gettempdir() + '/.getemp'
@@ -25,7 +28,7 @@ def read_zipfile():
     if system() == "Windows": os.chdir(tmpdir+"\\assets")
 
 class Scene:
-    def __init__(self, sky_path, floor_path, wall_path, size=5, map_path=None, test_exitx=None, test_exity=None, playerx=None, playery=None, _enemies=True, caption="", show_sword=True):
+    def __init__(self, sky_path, floor_path, wall_path, size=5, map_path=None, test_exitx=None, test_exity=None, playerx=None, playery=None, _enemies=True, caption="", show_sword=True, effect=None):
         global read_zip
         self.next = False
         if not read_zip:
@@ -39,6 +42,7 @@ class Scene:
         pg.mouse.set_visible(False)
         self.mv = False
         pg.event.set_grab(not self.mv)
+        self.effect = effect
 
         self.hres = 250 #horizontal resolution
         self.halfvres = int(self.hres*0.375) #vertical resolution/2
@@ -66,9 +70,9 @@ class Scene:
         #wall = pg.surfarray.array3d(pg.image.load('floor_0.png'))/255
         self.floor = pg.surfarray.array3d(pg.image.load(floor_path))/255
         self.wall = pg.surfarray.array3d(pg.image.load(wall_path))/255
-        self.sprites, self.spsize, self.sword, self.swordsp = get_sprites(self.hres)
+        self.sprites, self.spsize, self.sword, self.swordsp = self.get_sprites(self.hres)
         
-        self.enemies = spawn_enemies(self.nenemies, self.maph, self.size)
+        self.enemies = self.spawn_enemies(self.nenemies, self.maph, self.size)
         self.sw = show_sword
         #grab_map("level0.map")
     
@@ -102,7 +106,7 @@ class Scene:
         if len(self.enemies) != 0:
             try: self.enemies = sort_sprites(self.posx, self.posy, self.rot, self.enemies, self.maph, self.size, er/5)
             except: pass
-        try: surf, en = draw_sprites(surf, self.sprites, self.enemies, self.spsize, self.hres, self.halfvres, ticks, self.sword, self.swordsp, self.enx, self.roty)
+        try: surf, en = self.draw_sprites(surf, self.sprites, self.enemies, self.spsize, self.hres, self.halfvres, ticks, self.sword, self.swordsp, self.enx, self.roty)
         except: 
             en = 0
             swordpos = (np.sin(ticks)*10*self.hres/800,(np.cos(ticks)*10+15)*self.hres/800) # sword shake
@@ -122,6 +126,8 @@ class Scene:
             self.swordsp = (self.swordsp + er*5)%4
 
         self.screen.blit(surf, (0,0))
+        if self.effect != None:
+            self.screen.blit(self.effect, (0,0))
         pg.display.update()
         fps = int(self.clock.get_fps())
         pg.display.set_caption(self.caption + " - FPS: " + str(fps))
@@ -232,72 +238,79 @@ class Scene:
         print(c)
         return c
 
-def spawn_enemies(number, maph, msize):
-    enemies = []
-    for i in range(number):
-        x, y = np.random.uniform(1, msize-2), np.random.uniform(1, msize-2)
-        while (maph[int(x-0.1)%(msize-1)][int(y-0.1)%(msize-1)] or
-               maph[int(x-0.1)%(msize-1)][int(y+0.1)%(msize-1)] or
-               maph[int(x+0.1)%(msize-1)][int(y-0.1)%(msize-1)] or
-               maph[int(x+0.1)%(msize-1)][int(y+0.1)%(msize-1)]):
-            x, y = np.random.uniform(1, msize-1), np.random.uniform(1, msize-1)
-        angle2p, invdist2p, dir2p = 0, 0, 0 # angle, inv dist, dir2p relative to player
-        entype = np.random.choice([0,1]) # 0 zombie, 1 skeleton
-        direction = np.random.uniform(0, 2*np.pi) # facing direction
-        size = np.random.uniform(7, 10)
-        enemies.append([x, y, angle2p, invdist2p, entype, size, direction, dir2p])
+    def spawn_enemies(self, number, maph, msize):
+        enemies = []
+        for i in range(number):
+            x, y = np.random.uniform(1, msize-2), np.random.uniform(1, msize-2)
+            while (maph[int(x-0.1)%(msize-1)][int(y-0.1)%(msize-1)] or
+                maph[int(x-0.1)%(msize-1)][int(y+0.1)%(msize-1)] or
+                maph[int(x+0.1)%(msize-1)][int(y-0.1)%(msize-1)] or
+                maph[int(x+0.1)%(msize-1)][int(y+0.1)%(msize-1)]):
+                x, y = np.random.uniform(1, msize-1), np.random.uniform(1, msize-1)
+            angle2p, invdist2p, dir2p = 0, 0, 0 # angle, inv dist, dir2p relative to player
+            entype = np.random.choice([0,1]) # 0 zombie, 1 skeleton
+            direction = np.random.uniform(0, 2*np.pi) # facing direction
+            size = np.random.uniform(7, 10)
+            enemies.append([x, y, angle2p, invdist2p, entype, size, direction, dir2p])
 
-    print(len(enemies))
-    return np.asarray(enemies)
+        print(len(enemies))
+        return np.asarray(enemies)
 
-def get_sprites(hres):
-    sheet = pg.image.load('zombie_n_skeleton4.png').convert_alpha()
-    sprites = [[], []]
-    swordsheet = pg.image.load('sword1.png').convert_alpha() 
-    sword = []
-    for i in range(3):
-        subsword = pg.Surface.subsurface(swordsheet,(i*800,0,800,600))
-        sword.append(pg.transform.smoothscale(subsword, (hres, int(hres*0.75))))
-        xx = i*32
-        sprites[0].append([])
-        sprites[1].append([])
-        for j in range(4):
-            yy = j*100
-            sprites[0][i].append(pg.Surface.subsurface(sheet,(xx,yy,32,100)))
-            sprites[1][i].append(pg.Surface.subsurface(sheet,(xx+96,yy,32,100)))
+    def get_sprites(self, hres):
+        sheet = pg.image.load('zombie_n_skeleton4.png').convert_alpha()
+        sprites = [[], []]
+        swordsheet = pg.image.load('sword1.png').convert_alpha() 
+        sword = []
+        for i in range(3):
+            subsword = pg.Surface.subsurface(swordsheet,(i*800,0,800,600))
+            sword.append(pg.transform.smoothscale(subsword, (hres, int(hres*0.75))))
+            xx = i*32
+            sprites[0].append([])
+            sprites[1].append([])
+            for j in range(4):
+                yy = j*100
+                sprites[0][i].append(pg.Surface.subsurface(sheet,(xx,yy,32,100)))
+                sprites[1][i].append(pg.Surface.subsurface(sheet,(xx+96,yy,32,100)))
 
-    spsize = np.asarray(sprites[0][1][0].get_size())*hres/800
+        spsize = np.asarray(sprites[0][1][0].get_size())*hres/800
 
-    sword.append(sword[1]) # extra middle frame
-    swordsp = 0 #current sprite for the sword
+        sword.append(sword[1]) # extra middle frame
+        swordsp = 0 #current sprite for the sword
+        
+        return sprites, spsize, sword, swordsp
+
+    def draw_sprites(self, surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, swordsp, enx, roty):
+        #enemies : x, y, angle2p, dist2p, type, size, direction, dir2p
+        offset = int(roty*halfvres)
+        cycle = int(ticks)%3 # animation cycle for monsters
+        if len(enemies) == 0: en0 = 0
+        if len(enemies) != 0:
+            for en in range(len(enemies)):
+                if enemies[en][3] > 10:
+                    break
+                types, dir2p = int(enemies[en][4]), int(enemies[en][7])
+                cos2 = np.cos(enemies[en][2])
+                scale = min(enemies[en][3], 2)*spsize*enemies[en][5]/cos2
+                vert = halfvres + halfvres*min(enemies[en][3], 2)/cos2-offset
+                hor = hres/2 - hres*np.sin(enemies[en][2])
+                spsurf = pg.transform.scale(sprites[types][cycle][dir2p], scale)
+                surf.blit(spsurf, (hor,vert)-scale/2)
+        else: en0 = en
+
+        swordpos = (np.sin(ticks)*10*hres/800,(np.cos(ticks)*10+15)*hres/800) # sword shake
+        if enx[1]:
+            surf.blit(sword[int(swordsp)], swordpos)
+        if len(enemies) == 0: 
+            en0 = 0
+            en = en0
+        return surf, en-1
     
-    return sprites, spsize, sword, swordsp
-
-def draw_sprites(surf, sprites, enemies, spsize, hres, halfvres, ticks, sword, swordsp, enx, roty):
-    #enemies : x, y, angle2p, dist2p, type, size, direction, dir2p
-    offset = int(roty*halfvres)
-    cycle = int(ticks)%3 # animation cycle for monsters
-    if len(enemies) == 0: en0 = 0
-    if len(enemies) != 0:
-        for en in range(len(enemies)):
-            if enemies[en][3] > 10:
-                break
-            types, dir2p = int(enemies[en][4]), int(enemies[en][7])
-            cos2 = np.cos(enemies[en][2])
-            scale = min(enemies[en][3], 2)*spsize*enemies[en][5]/cos2
-            vert = halfvres + halfvres*min(enemies[en][3], 2)/cos2-offset
-            hor = hres/2 - hres*np.sin(enemies[en][2])
-            spsurf = pg.transform.scale(sprites[types][cycle][dir2p], scale)
-            surf.blit(spsurf, (hor,vert)-scale/2)
-    else: en0 = en
-
-    swordpos = (np.sin(ticks)*10*hres/800,(np.cos(ticks)*10+15)*hres/800) # sword shake
-    if enx[1]:
-        surf.blit(sword[int(swordsp)], swordpos)
-    if len(enemies) == 0: 
-        en0 = 0
-        en = en0
-    return surf, en-1
+    def add_effect(self, rgba):
+        self.effect = pg.Surface((800,600), flags=pg.SRCALPHA)
+        self.effect.fill(rgba)
+    
+    def remove_effects(self):
+        self.effect = None
 
 @njit()
 def new_frame(posx, posy, rot, frame, sky, floor, hres, halfvres, mod, maph, size, wall, mapc, exitx, exity, roty, offset):
@@ -349,7 +362,7 @@ def new_frame(posx, posy, rot, frame, sky, floor, hres, halfvres, mod, maph, siz
             if maph[int(x-0.33)%(size-1)][int(y-0.33)%(size-1)]:
                 shade = shade*0.5
             elif ((maph[int(x-0.33)%(size-1)][int(y)%(size-1)] and y%1>x%1)  or
-                  (maph[int(x)%(size-1)][int(y-0.33)%(size-1)] and x%1>y%1)):
+                (maph[int(x)%(size-1)][int(y-0.33)%(size-1)] and x%1>y%1)):
                 shade = shade*0.5
 
             frame[i][halfvres*2-j-1] = shade*(floor[xx][yy]*2+frame[i][halfvres*2-j-1])/3
@@ -398,7 +411,7 @@ def sort_sprites(posx, posy, rot, enemies, maph, size, er):
     return enemies
 
 if __name__ == '__main__':
-    write_zipfile()
+    #write_zipfile()
     room = 1
     while True:
         scn0 = Scene('ceil_4.png', 'floor_1.png', 'floor_0.png', 6, "level0.map", 4, 3, 2, 3.5, False, f'Room: {room}')
